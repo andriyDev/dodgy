@@ -1,14 +1,21 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+use glam::Vec2;
+
+pub struct Agent {
+  pub position: Vec2,
+  pub velocity: Vec2,
+  pub preferred_velocity: Vec2,
+
+  pub radius: f32,
+  pub max_velocity: f32,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+impl Agent {
+  pub fn compute_avoiding_velocity(
+    &self,
+    neighbours: &[&Agent],
+    time_horizon: f32,
+    time_step: f32,
+  ) -> Vec2 {
+    todo!()
+  }
 }
