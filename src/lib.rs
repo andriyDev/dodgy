@@ -1,4 +1,7 @@
+mod linear_programming;
+
 use glam::Vec2;
+use linear_programming::Line;
 
 pub struct Agent {
   pub position: Vec2,
