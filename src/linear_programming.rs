@@ -71,7 +71,7 @@ fn solve_linear_program_along_line(
   let discriminant = line_dot_product * line_dot_product + radius * radius
     - line.point.dot(line.point);
 
-  if radius < 0.0 {
+  if discriminant < 0.0 {
     // `line` does not intersect the circle with `radius`, so the linear program
     // is infeasible.
     return Err(());
@@ -129,7 +129,7 @@ fn solve_linear_program_along_line(
   }
 
   let t = match optimal_value {
-    OptimalValue::Direction(direction) => {
+    &OptimalValue::Direction(direction) => {
       // If the optimal value is determined by a direction, just pick the most
       // extreme value in that direction. This will always either be t_right or
       // t_left.
@@ -139,12 +139,12 @@ fn solve_linear_program_along_line(
         t_left
       }
     }
-    OptimalValue::Point(point) => {
+    &OptimalValue::Point(point) => {
       // If the optimal value is determined by a point, project that point onto
       // the line segment [t_left, t_right].
 
       // Project to the line unconstrained.
-      let t = line.direction.dot(*point - line.point);
+      let t = line.direction.dot(point - line.point);
 
       // Clamp that point to the correct range.
       t.clamp(t_left, t_right)
@@ -338,4 +338,168 @@ fn solve_linear_program_3d(
 
 fn determinant(a: Vec2, b: Vec2) -> f32 {
   a.x * b.y - a.y * b.x
+}
+
+#[cfg(test)]
+mod solve_linear_program_along_line_tests {
+  use glam::Vec2;
+
+  use super::{solve_linear_program_along_line, Line, OptimalValue};
+
+  #[test]
+  fn projects_optimal_point_with_no_constraints() {
+    // Compute what the circle height should be at the 0.5 mark.
+    let circle_height_at_half = (1.0f32 - 0.5 * 0.5).sqrt();
+
+    let valid_line =
+      Line { direction: Vec2::new(0.0, 1.0), point: Vec2::new(0.5, 0.0) };
+
+    assert_eq!(
+      solve_linear_program_along_line(
+        &valid_line,
+        1.0,
+        Default::default(),
+        &OptimalValue::Point(Vec2::new(5.0, 0.25)),
+      ),
+      Ok(Vec2::new(0.5, 0.25))
+    );
+
+    assert_eq!(
+      solve_linear_program_along_line(
+        &valid_line,
+        1.0,
+        Default::default(),
+        &OptimalValue::Point(Vec2::new(5.0, 2.0)),
+      ),
+      Ok(Vec2::new(0.5, circle_height_at_half))
+    );
+
+    assert_eq!(
+      solve_linear_program_along_line(
+        &valid_line,
+        1.0,
+        Default::default(),
+        &OptimalValue::Point(Vec2::new(5.0, -100.0)),
+      ),
+      Ok(Vec2::new(0.5, -circle_height_at_half))
+    );
+  }
+
+  #[test]
+  fn projects_optimal_direction_with_no_constraints() {
+    // Compute what the circle height should be at the 0.5 mark.
+    let circle_height_at_half = (1.0f32 - 0.5 * 0.5).sqrt();
+
+    let valid_line =
+      Line { direction: Vec2::new(0.0, 1.0), point: Vec2::new(0.5, 0.0) };
+
+    assert_eq!(
+      solve_linear_program_along_line(
+        &valid_line,
+        1.0,
+        Default::default(),
+        &OptimalValue::Direction(Vec2::new(1.0, 0.5).normalize()),
+      ),
+      Ok(Vec2::new(0.5, circle_height_at_half))
+    );
+
+    assert_eq!(
+      solve_linear_program_along_line(
+        &valid_line,
+        1.0,
+        Default::default(),
+        &OptimalValue::Direction(Vec2::new(1.0, -0.5).normalize()),
+      ),
+      Ok(Vec2::new(0.5, -circle_height_at_half))
+    );
+  }
+
+  #[test]
+  fn constraints_remove_valid_values() {
+    let valid_line =
+      Line { direction: Vec2::new(0.0, 1.0), point: Vec2::new(0.5, 0.0) };
+
+    let constraints = [
+      // This line intersects `valid_line` at (0.5, 0.5).
+      Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::new(-100.0, 0.5) },
+      // This line intersects `valid_line` at (0.5, -0.75).
+      Line {
+        direction: Vec2::new(1.0, 1.0).normalize(),
+        point: Vec2::new(0.25, -1.0),
+      },
+    ];
+
+    // The middle value should be unchanged.
+    assert_eq!(
+      solve_linear_program_along_line(
+        &valid_line,
+        1.0,
+        &constraints,
+        &OptimalValue::Point(Vec2::new(-5.0, 0.25)),
+      ),
+      Ok(Vec2::new(0.5, 0.25))
+    );
+
+    assert_eq!(
+      solve_linear_program_along_line(
+        &valid_line,
+        1.0,
+        &constraints,
+        &OptimalValue::Point(Vec2::new(-5.0, 1.0)),
+      ),
+      Ok(Vec2::new(0.5, 0.5))
+    );
+
+    assert_eq!(
+      solve_linear_program_along_line(
+        &valid_line,
+        1.0,
+        &constraints,
+        &OptimalValue::Point(Vec2::new(-5.0, -1.0)),
+      ),
+      Ok(Vec2::new(0.5, -0.75))
+    );
+  }
+
+  #[test]
+  fn constraints_are_infeasible() {
+    let valid_line =
+      Line { direction: Vec2::new(0.0, 1.0), point: Vec2::new(0.5, 0.0) };
+
+    let constraints = [
+      // This line intersects `valid_line` at (0.5, 0.5), and invalidates all
+      // points below.
+      Line { direction: Vec2::new(1.0, 0.0), point: Vec2::new(-100.0, 0.5) },
+      // This line intersects `valid_line` at (0.5, -0.5), and invalides all
+      // points above.
+      Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::new(-100.0, -0.5) },
+    ];
+
+    // The middle value should be unchanged.
+    assert_eq!(
+      solve_linear_program_along_line(
+        &valid_line,
+        1.0,
+        &constraints,
+        &OptimalValue::Point(Vec2::ZERO),
+      ),
+      Err(())
+    );
+  }
+
+  #[test]
+  fn valid_line_outside_circle() {
+    let valid_line =
+      Line { direction: Vec2::new(0.0, 1.0), point: Vec2::new(2.0, 0.0) };
+
+    assert_eq!(
+      solve_linear_program_along_line(
+        &valid_line,
+        1.0,
+        Default::default(),
+        &OptimalValue::Point(Vec2::ZERO),
+      ),
+      Err(())
+    );
+  }
 }
