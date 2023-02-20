@@ -2,7 +2,7 @@ use glam::Vec2;
 
 // A half-plane to act as a constraint on the linear program. This is
 // represented as a point and a direction, where the valid half-plane resides on
-// the "clockwise" side of `direction` and `point`.
+// the counter-clockwise side of `direction` and `point`.
 #[derive(Clone)]
 pub struct Line {
   pub point: Vec2,
@@ -192,7 +192,7 @@ fn solve_linear_program_2d(
 
   for (index, constraint) in constraints.iter().enumerate() {
     if determinant(constraint.direction, best_value - constraint.point) > 0.0 {
-      // If the current best value is already on the value side of the
+      // If the current best value is already on the valid side of the
       // half-plane defined by `constraint`, there is nothing to do.
       continue;
     }
