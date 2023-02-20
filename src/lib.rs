@@ -38,7 +38,12 @@ impl Agent {
       })
       .collect::<Vec<Line>>();
 
-    solve_linear_program(&lines, preferred_velocity, self.max_velocity)
+    solve_linear_program(
+      &lines,
+      /*rigid_constraint_count=*/ 0,
+      self.max_velocity,
+      preferred_velocity,
+    )
   }
 
   // Creates a line to describe the half-plane of valid velocities that should

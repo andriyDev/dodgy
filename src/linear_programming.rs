@@ -10,20 +10,22 @@ pub struct Line {
   pub direction: Vec2,
 }
 
-// Determines the optimal value of the linear program defined be `lines` and
-// `preferred_value`. Optimality is defined as:
-//  1) The nearest point to `preferred_value` subject to:
-//      a) magnitude less than `radius`
-//      b) in the intersection of the half-planes defined by `lines`.
-//  2) If the above does not exist, the half-planes are moved back at the same
-//      speed until a single point exists that satisfies all constraints.
+// Solves the linear program defined as finding the value closest to
+// `preferred_value` under the constraints that the value has a length less than
+// `radius`, and is outside all half-planes defined by `constraints`. If
+// satisfying all constraints is infeasible, the non-rigid constraints (i.e.
+// `constraints[rigid_constraint_count..]`) are relaxed and the
+// least-penetrating value is returned. Note this means that
+// `constraints[0..rigid_constraint_count]` must be feasible, else the results
+// are undefined.
 pub fn solve_linear_program(
-  lines: &[Line],
-  preferred_value: Vec2,
+  constraints: &[Line],
+  rigid_constraint_count: usize,
   radius: f32,
+  preferred_value: Vec2,
 ) -> Vec2 {
   match solve_linear_program_2d(
-    lines,
+    constraints,
     radius,
     &OptimalValue::Point(preferred_value),
   ) {
@@ -32,7 +34,7 @@ pub fn solve_linear_program(
       index_of_failed_line,
       partial_value,
     } => solve_linear_program_3d(
-      lines,
+      constraints,
       0,
       radius,
       index_of_failed_line,
