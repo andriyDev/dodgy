@@ -35,7 +35,7 @@ pub fn solve_linear_program(
       partial_value,
     } => solve_linear_program_3d(
       constraints,
-      0,
+      rigid_constraint_count,
       radius,
       index_of_failed_line,
       partial_value,
@@ -799,6 +799,169 @@ mod tests {
           /*radius=*/ 2.0,
           /*index_of_failed_line=*/ 1,
           Vec2::new(0.0, 0.0)
+        ),
+        Vec2::new(-(PI / 8.0).tan(), 0.0)
+      );
+    }
+  }
+
+  mod solve_linear_program_tests {
+    use glam::Vec2;
+    use std::f32::consts::PI;
+
+    use super::{solve_linear_program, Line};
+
+    #[test]
+    fn uses_projected_optimal_point() {
+      let one_over_root_2 = 1.0f32 / 2.0f32.sqrt();
+
+      assert_eq!(
+        solve_linear_program(
+          Default::default(),
+          /*rigid_constraint_count=*/ 0,
+          /*radius=*/ 1.0,
+          Vec2::new(0.5, 0.25)
+        ),
+        Vec2::new(0.5, 0.25)
+      );
+
+      assert_eq!(
+        solve_linear_program(
+          Default::default(),
+          /*rigid_constraint_count=*/ 0,
+          /*radius=*/ 1.0,
+          Vec2::new(1.0, 1.0)
+        ),
+        Vec2::new(one_over_root_2, one_over_root_2)
+      );
+    }
+
+    #[test]
+    fn satisfies_constraints() {
+      let one_over_root_2 = 1.0f32 / 2.0f32.sqrt();
+
+      let constraints = [
+        Line { direction: Vec2::new(0.0, 1.0), point: Vec2::new(0.5, 0.0) },
+        Line { direction: Vec2::new(1.0, 0.0), point: Vec2::new(-0.5, -0.25) },
+      ];
+
+      // Same in, same out.
+      assert_eq!(
+        solve_linear_program(
+          &constraints,
+          /*rigid_constraint_count=*/ 0,
+          /*radius=*/ 1.0,
+          Vec2::new(-0.1, 0.3)
+        ),
+        Vec2::new(-0.1, 0.3)
+      );
+
+      // Limited to radius.
+      assert_eq!(
+        solve_linear_program(
+          &constraints,
+          /*rigid_constraint_count=*/ 0,
+          /*radius=*/ 1.0,
+          Vec2::new(-2.0, 2.0)
+        ),
+        Vec2::new(-one_over_root_2, one_over_root_2)
+      );
+
+      // Restricted by `constraints[0]`.
+      assert_eq!(
+        solve_linear_program(
+          &constraints,
+          /*rigid_constraint_count=*/ 0,
+          /*radius=*/ 1.0,
+          Vec2::new(2.0, 0.5)
+        ),
+        Vec2::new(0.5, 0.5)
+      );
+
+      // Restricted by `constraints[1]`.
+      assert_eq!(
+        solve_linear_program(
+          &constraints,
+          /*rigid_constraint_count=*/ 0,
+          /*radius=*/ 1.0,
+          Vec2::new(0.0, -0.5)
+        ),
+        Vec2::new(0.0, -0.25)
+      );
+
+      // Restricted by both constraints.
+      assert_eq!(
+        solve_linear_program(
+          &constraints,
+          /*rigid_constraint_count=*/ 0,
+          /*radius=*/ 1.0,
+          Vec2::new(1.0, -0.5)
+        ),
+        Vec2::new(0.5, -0.25)
+      );
+    }
+
+    #[test]
+    fn infeasible_program_minimally_penetrates_constraints() {
+      let constraints = [
+        Line { direction: Vec2::new(1.0, 0.0), point: Vec2::new(-100.0, 0.0) },
+        Line { direction: Vec2::new(0.0, -1.0), point: Vec2::new(0.0, 0.0) },
+        Line {
+          direction: Vec2::new(-1.0, 1.0).normalize(),
+          point: Vec2::new(0.0, -1.0),
+        },
+      ];
+
+      let root_2 = 2.0f32.sqrt();
+
+      assert_vec2_near!(
+        solve_linear_program(
+          &constraints,
+          /*rigid_constraint_count=*/ 0,
+          /*radius=*/ 2.0,
+          /*preferred_value=*/ Vec2::new(1.0, 1.0)
+        ),
+        // I had to do some math to solve this. This is the point equa-distant
+        // from all three constraint lines.
+        Vec2::new(-1.0, -1.0).normalize() * (root_2 / (2.0 + root_2))
+      );
+    }
+
+    #[test]
+    fn rigid_constraints_never_relaxed_when_infeasible() {
+      let constraints = [
+        Line { direction: Vec2::new(1.0, 0.0), point: Vec2::new(-100.0, 0.0) },
+        Line { direction: Vec2::new(0.0, -1.0), point: Vec2::new(0.0, 0.0) },
+        Line {
+          direction: Vec2::new(-1.0, 1.0).normalize(),
+          point: Vec2::new(0.0, -1.0),
+        },
+      ];
+
+      // The first two constraints cannot be relaxed, so (0, 0) is the best value
+      // (nearest to satisfying the third constraint).
+      assert_vec2_near!(
+        solve_linear_program(
+          &constraints,
+          /*rigid_constraint_count=*/ 2,
+          /*radius=*/ 2.0,
+          /*preferred_value=*/ Vec2::new(0.0, 0.0)
+        ),
+        Vec2::new(0.0, 0.0)
+      );
+
+      // The first constraint cannot be relaxed, so find the best value between
+      // the last two constraints. Constraint 2 and 3 are 45 degrees apart, so
+      // find the intersection point of constraint 1 and the 22.5 degree line
+      // between constraint 2 and 3. Turns out that is
+      // $sin(pi / 8) / cos(pi / 8)$ (sin for the angle, cos to make sure the
+      // adjacent side length is 1).
+      assert_vec2_near!(
+        solve_linear_program(
+          &constraints,
+          /*rigid_constraint_count=*/ 1,
+          /*radius=*/ 2.0,
+          /*preferred_value=*/ Vec2::new(0.0, 0.0)
         ),
         Vec2::new(-(PI / 8.0).tan(), 0.0)
       );
