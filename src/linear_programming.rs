@@ -237,7 +237,7 @@ fn solve_linear_program_3d(
   index_of_failed_line: usize,
   partial_value: Vec2,
 ) -> Vec2 {
-  debug_assert!(rigid_constraint_count < index_of_failed_line);
+  debug_assert!(rigid_constraint_count <= index_of_failed_line);
 
   // The 2D linear program returned a partial value that is guaranteed to
   // satisfy all constraints up to `index_of_failed_line`. So the current best
@@ -252,7 +252,7 @@ fn solve_linear_program_3d(
     if determinant(constraint.direction, constraint.point - best_value)
       <= penetration
     {
-      // `best_value` does not penetrate the constraint anymore than other
+      // `best_value` does not penetrate the constraint any more than other
       // constraints, so move on (this constraint will still be considered for
       // future constraints).
       continue;
@@ -700,6 +700,100 @@ mod solve_linear_program_2d_tests {
         &OptimalValue::Direction(Vec2::new(0.0, 1.0))
       ),
       LinearProgram2DResult::Feasible(Vec2::new(0.0, 1.0))
+    );
+  }
+}
+
+#[cfg(test)]
+mod solve_linear_program_3d_tests {
+  macro_rules! assert_vec2_near {
+    ($a: expr, $b: expr) => {{
+      let a = $a;
+      let b = $b;
+
+      assert!(
+        (a - b).length_squared() < super::RVO_EPSILON,
+        "\n  left: {}\n right: {}",
+        a,
+        b
+      );
+    }};
+  }
+
+  use std::f32::consts::PI;
+
+  use glam::Vec2;
+
+  use crate::linear_programming::solve_linear_program_3d;
+
+  use super::Line;
+
+  #[test]
+  fn minimally_penetrates_constraints() {
+    let constraints = [
+      Line { direction: Vec2::new(1.0, 0.0), point: Vec2::new(-100.0, 0.0) },
+      Line { direction: Vec2::new(0.0, -1.0), point: Vec2::new(0.0, 0.0) },
+      Line {
+        direction: Vec2::new(-1.0, 1.0).normalize(),
+        point: Vec2::new(0.0, -1.0),
+      },
+    ];
+
+    let root_2 = 2.0f32.sqrt();
+
+    assert_vec2_near!(
+      solve_linear_program_3d(
+        &constraints,
+        /*rigid_constraint_count=*/ 0,
+        /*radius=*/ 2.0,
+        /*index_of_failed_line=*/ 0,
+        Vec2::new(0.0, 0.0)
+      ),
+      // I had to do some math to solve this. This is the point equa-distant
+      // from all three constraint lines.
+      Vec2::new(-1.0, -1.0).normalize() * (root_2 / (2.0 + root_2))
+    );
+  }
+
+  #[test]
+  fn rigid_constraints_never_relaxed() {
+    let constraints = [
+      Line { direction: Vec2::new(1.0, 0.0), point: Vec2::new(-100.0, 0.0) },
+      Line { direction: Vec2::new(0.0, -1.0), point: Vec2::new(0.0, 0.0) },
+      Line {
+        direction: Vec2::new(-1.0, 1.0).normalize(),
+        point: Vec2::new(0.0, -1.0),
+      },
+    ];
+
+    // The first two constraints cannot be relaxed, so (0, 0) is the best value
+    // (nearest to satisfying the third constraint).
+    assert_vec2_near!(
+      solve_linear_program_3d(
+        &constraints,
+        /*rigid_constraint_count=*/ 2,
+        /*radius=*/ 2.0,
+        /*index_of_failed_line=*/ 2,
+        Vec2::new(0.0, 0.0)
+      ),
+      Vec2::new(0.0, 0.0)
+    );
+
+    // The first constraint cannot be relaxed, so find the best value between
+    // the last two constraints. Constraint 2 and 3 are 45 degrees apart, so
+    // find the intersection point of constraint 1 and the 22.5 degree line
+    // between constraint 2 and 3. Turns out that is
+    // $sin(pi / 8) / cos(pi / 8)$ (sin for the angle, cos to make sure the
+    // adjacent side length is 1).
+    assert_vec2_near!(
+      solve_linear_program_3d(
+        &constraints,
+        /*rigid_constraint_count=*/ 1,
+        /*radius=*/ 2.0,
+        /*index_of_failed_line=*/ 1,
+        Vec2::new(0.0, 0.0)
+      ),
+      Vec2::new(-(PI / 8.0).tan(), 0.0)
     );
   }
 }
