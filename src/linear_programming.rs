@@ -156,6 +156,7 @@ fn solve_linear_program_along_line(
 }
 
 // The result of the 2D linear program.
+#[derive(PartialEq, Debug)]
 enum LinearProgram2DResult {
   // The linear program was feasible and holds the optimal value.
   Feasible(Vec2),
@@ -202,7 +203,7 @@ fn solve_linear_program_2d(
     match solve_linear_program_along_line(
       constraint,
       radius,
-      constraints,
+      &constraints[0..index],
       optimal_value,
     ) {
       Ok(new_value) => best_value = new_value,
@@ -500,6 +501,203 @@ mod solve_linear_program_along_line_tests {
         &OptimalValue::Point(Vec2::ZERO),
       ),
       Err(())
+    );
+  }
+}
+
+#[cfg(test)]
+mod solve_linear_program_2d_tests {
+  use glam::Vec2;
+
+  use crate::linear_programming::LinearProgram2DResult;
+
+  use super::{solve_linear_program_2d, Line, OptimalValue};
+
+  #[test]
+  fn uses_projected_optimal_point() {
+    let one_over_root_2 = 1.0f32 / 2.0f32.sqrt();
+
+    assert_eq!(
+      solve_linear_program_2d(
+        Default::default(),
+        1.0,
+        &OptimalValue::Point(Vec2::new(0.5, 0.25)),
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(0.5, 0.25))
+    );
+
+    assert_eq!(
+      solve_linear_program_2d(
+        Default::default(),
+        1.0,
+        &OptimalValue::Point(Vec2::new(1.0, 1.0)),
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(
+        one_over_root_2,
+        one_over_root_2
+      ))
+    );
+  }
+
+  #[test]
+  fn uses_optimal_direction() {
+    let one_over_root_2 = 1.0f32 / 2.0f32.sqrt();
+
+    assert_eq!(
+      solve_linear_program_2d(
+        Default::default(),
+        3.0,
+        &OptimalValue::Direction(Vec2::new(one_over_root_2, one_over_root_2)),
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(
+        one_over_root_2 * 3.0,
+        one_over_root_2 * 3.0
+      ))
+    );
+
+    assert_eq!(
+      solve_linear_program_2d(
+        Default::default(),
+        5.0,
+        &OptimalValue::Direction(Vec2::new(one_over_root_2, -one_over_root_2)),
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(
+        one_over_root_2 * 5.0,
+        one_over_root_2 * -5.0
+      ))
+    );
+  }
+
+  #[test]
+  fn satisfies_constraints() {
+    let one_over_root_2 = 1.0f32 / 2.0f32.sqrt();
+
+    let constraints = [
+      Line { direction: Vec2::new(0.0, 1.0), point: Vec2::new(0.5, 0.0) },
+      Line { direction: Vec2::new(1.0, 0.0), point: Vec2::new(-0.5, -0.25) },
+    ];
+
+    // Same in, same out.
+    assert_eq!(
+      solve_linear_program_2d(
+        &constraints,
+        1.0,
+        &OptimalValue::Point(Vec2::new(-0.1, 0.3))
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(-0.1, 0.3))
+    );
+
+    // Limited to radius.
+    assert_eq!(
+      solve_linear_program_2d(
+        &constraints,
+        1.0,
+        &OptimalValue::Point(Vec2::new(-2.0, 2.0))
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(
+        -one_over_root_2,
+        one_over_root_2
+      ))
+    );
+
+    // Restricted by `constraints[0]`.
+    assert_eq!(
+      solve_linear_program_2d(
+        &constraints,
+        1.0,
+        &OptimalValue::Point(Vec2::new(2.0, 0.5))
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(0.5, 0.5))
+    );
+
+    // Restricted by `constraints[1]`.
+    assert_eq!(
+      solve_linear_program_2d(
+        &constraints,
+        1.0,
+        &OptimalValue::Point(Vec2::new(0.0, -0.5))
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(0.0, -0.25))
+    );
+
+    // Restricted by both constraints.
+    assert_eq!(
+      solve_linear_program_2d(
+        &constraints,
+        1.0,
+        &OptimalValue::Point(Vec2::new(1.0, -0.5))
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(0.5, -0.25))
+    );
+  }
+
+  #[test]
+  fn constraints_are_infeasible() {
+    let constraints = [
+      Line { direction: Vec2 { x: 0.0, y: 1.0 }, point: Vec2::ZERO },
+      Line { direction: Vec2 { x: 1.0, y: 0.0 }, point: Vec2::ZERO },
+      Line {
+        direction: Vec2 { x: -1.0, y: -1.0 }.normalize(),
+        point: Vec2::new(0.1, -0.1),
+      },
+    ];
+
+    assert_eq!(
+      solve_linear_program_2d(
+        &constraints,
+        1.0,
+        &OptimalValue::Point(Vec2::ONE)
+      ),
+      LinearProgram2DResult::Infeasible {
+        index_of_failed_line: 2,
+        partial_value: Vec2::new(0.0, 1.0)
+      }
+    )
+  }
+
+  #[test]
+  fn optimal_direction_uses_constraint_lines() {
+    // Compute what the circle height should be at the 0.5 mark.
+    let circle_height_at_half = (1.0f32 - 0.5 * 0.5).sqrt();
+
+    let constraints = [
+      Line { direction: Vec2 { x: 0.0, y: 1.0 }, point: Vec2::new(0.5, 0.0) },
+      Line { direction: Vec2 { x: 1.0, y: 0.0 }, point: Vec2::new(-0.5, -0.3) },
+      Line {
+        direction: Vec2 { x: -1.0, y: -1.0 }.normalize(),
+        point: Vec2::new(-0.6, 0.6),
+      },
+    ];
+
+    // Direction points towards intersection of first two constraints.
+    assert_eq!(
+      solve_linear_program_2d(
+        &constraints,
+        1.0,
+        &OptimalValue::Direction(Vec2::new(1.0, -1.0).normalize())
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(0.5, -0.3))
+    );
+
+    // Direction points (barely) towards intersection of first constraint and
+    // circle radius.
+    assert_eq!(
+      solve_linear_program_2d(
+        &constraints,
+        1.0,
+        &OptimalValue::Direction(Vec2::new(1.0, 0.5).normalize())
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(0.5, circle_height_at_half))
+    );
+
+    // Direction points towards top of circle (missing all constraints).
+    assert_eq!(
+      solve_linear_program_2d(
+        &constraints,
+        1.0,
+        &OptimalValue::Direction(Vec2::new(0.0, 1.0))
+      ),
+      LinearProgram2DResult::Feasible(Vec2::new(0.0, 1.0))
     );
   }
 }
