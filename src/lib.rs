@@ -54,6 +54,138 @@ impl Agent {
     time_horizon: f32,
     time_step: f32,
   ) -> Line {
-    todo!()
+    // There are two parts to the velocity obstacle induced by `neighbour`.
+    // 1) The cut-off circle. This is where the agent collides with `neighbour`
+    // after some time (either `time_horizon` or `time_step`).
+    // 2) The cut-off "legs". This is effectively the velocity obstacle's
+    // shadow. Any velocity that is just scaled up from a velocity in the
+    // cut-off circle will also hit `neighbour`.
+    //
+    // If the relative position and velocity is used, the cut-off for the legs
+    // will be directed toward the origin.
+
+    let relative_neighbour_position = neighbour.position - self.position;
+    let relative_agent_velocity = self.velocity - neighbour.velocity;
+
+    let distance_squared = relative_neighbour_position.length_squared();
+
+    let sum_radius = self.radius + neighbour.radius;
+    let sum_radius_squared = sum_radius * sum_radius;
+
+    let vo_normal;
+    let relative_velocity_projected_to_vo;
+
+    // Find out if the agent is inside the cut-off circle. Note: since both the
+    // distance to the cut-off circle and the radius of the cut-off circle is
+    // scaled by `time_horizon` (or `time_step` depending on the situation),
+    // factoring out those terms and cancelling yields this simpler expression.
+    if distance_squared > sum_radius_squared {
+      // No collision, so either project on to the cut-off circle, or the
+      // cut-off legs.
+      //
+      // As mentioned earlier, the legs act as the shadow of the
+      // cut-off circle. The cut-off legs lie along the tangents of the circle
+      // that intersects the origin (since the tangents are the lines that just
+      // graze the cut-off circle and so these line divide the "shadowed"
+      // velocities from the "unshadowed" velocities).
+      //
+      // Since the shadows are caused by the tangent lines, velocities should be
+      // projected to the cut-off circle when they are on one-side of the
+      // tangent points, and should be projected to the legs when on the
+      // other-side of the tangent points.
+
+      let cutoff_circle_center = relative_neighbour_position / time_horizon;
+      let cutoff_circle_center_to_relative_velocity =
+        relative_agent_velocity - cutoff_circle_center;
+      let cutoff_circle_center_to_relative_velocity_length_squared =
+        cutoff_circle_center_to_relative_velocity.length_squared();
+
+      let dot = cutoff_circle_center_to_relative_velocity
+        .dot(relative_neighbour_position);
+
+      // TODO: Figure out why this works. Something to do with circle tangents,
+      // right triangles with those tangents, and the angle between
+      // `cutoff_circle_center_to_relative_velocity` and
+      // `relative_neighbour_position`.
+      if dot < 0.0
+        && dot * dot
+          > sum_radius_squared
+            * cutoff_circle_center_to_relative_velocity_length_squared
+      {
+        // The relative velocity has not gone past the cut-off circle tangent
+        // points yet, so project onto the cut-off circle.
+
+        let cutoff_circle_radius = sum_radius / time_horizon;
+
+        vo_normal =
+          cutoff_circle_center_to_relative_velocity.normalize_or_zero();
+        relative_velocity_projected_to_vo =
+          vo_normal * cutoff_circle_radius + cutoff_circle_center;
+      } else {
+        // The relative velocity is past the cut-off circle tangent points, so
+        // project onto the legs.
+
+        let tangent_triangle_leg =
+          (distance_squared - sum_radius_squared).sqrt();
+
+        // Consider the right-triangle describing the tangent point (one side
+        // has length `sum_radius`, hypotenuse has side length
+        // `cutoff_circle_center_to_relative_velocity_length_squared`). The last
+        // side will have length `tangent_triangle_leg`. A similar triangle can
+        // then be created using the same triangle leg lengths, but oriented
+        // such that the hypotenuse is in the direction of the tangent and
+        // composed of directions `relative_position` and the perpendicular of
+        // `relative_position`.
+
+        // Determine whether the relative velocity is nearer the left or right
+        // leg.
+        let tangent_side = determinant(
+          relative_neighbour_position,
+          cutoff_circle_center_to_relative_velocity,
+        )
+        .signum();
+
+        // Compute the leg direction using the tangent triangle legs, and make
+        // sure to use the correct orientation of that direction (the correct
+        // side of the line is invalid).
+        let leg_direction =
+          relative_neighbour_position * tangent_triangle_leg * tangent_side
+            + relative_neighbour_position.perp() * sum_radius;
+
+        // Renormalize the leg direction.
+        let leg_direction = leg_direction / distance_squared;
+
+        vo_normal = leg_direction.perp();
+        // Project onto the leg.
+        relative_velocity_projected_to_vo =
+          relative_agent_velocity.project_onto_normalized(leg_direction);
+      }
+    } else {
+      // Collision. Project on cut-off circle at time `time_step`.
+
+      // Find the velocity such that after `time_step` the agent would be at the
+      // neighbours position.
+      let cutoff_circle_center = relative_neighbour_position / time_step;
+      let cutoff_circle_radius = sum_radius / time_step;
+
+      // The direction of the velocity from `cutoff_circle_center` is therefore
+      // the normal to the velocity obstacle.
+      vo_normal =
+        (relative_agent_velocity - cutoff_circle_center).normalize_or_zero();
+      // Get the point on the cut-off circle in that direction (which is the
+      // agent's velocity projected to the circle).
+      relative_velocity_projected_to_vo =
+        vo_normal * cutoff_circle_radius + cutoff_circle_center;
+    }
+
+    // As in the paper, `u` is the vector from the relative velocity to the
+    // nearest point outside the velocity obstacle.
+    let u = relative_velocity_projected_to_vo - relative_agent_velocity;
+
+    Line { point: self.velocity + u * 0.5, direction: -vo_normal.perp() }
   }
+}
+
+fn determinant(a: Vec2, b: Vec2) -> f32 {
+  a.x * b.y - a.y * b.x
 }
