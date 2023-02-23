@@ -3,7 +3,7 @@ use glam::Vec2;
 // A half-plane to act as a constraint on the linear program. This is
 // represented as a point and a direction, where the valid half-plane resides on
 // the counter-clockwise side of `direction` and `point`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Line {
   pub point: Vec2,
   // Must always have length = 1
