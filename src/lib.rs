@@ -23,7 +23,7 @@ impl Agent {
   // but agents will attempt to resolve any collisions in a reasonable fashion.
   // The `time_horizon` determines how long in the future should collisions be
   // considered between agents. The `time_step` helps determine the velocity in
-  // cases of existing collisions.
+  // cases of existing collisions, and must be positive.
   pub fn compute_avoiding_velocity(
     &self,
     neighbours: &[&Agent],
@@ -31,6 +31,8 @@ impl Agent {
     time_horizon: f32,
     time_step: f32,
   ) -> Vec2 {
+    assert!(time_step > 0.0, "time_step must be positive, was {}", time_step);
+
     let lines = neighbours
       .iter()
       .map(|neighbour| {
