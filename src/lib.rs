@@ -1,5 +1,7 @@
+mod common;
 mod linear_programming;
 
+use common::*;
 use glam::Vec2;
 use linear_programming::{solve_linear_program, Line};
 
@@ -186,10 +188,6 @@ impl Agent {
 
     Line { point: self.velocity + u * 0.5, direction: -vo_normal.perp() }
   }
-}
-
-fn determinant(a: Vec2, b: Vec2) -> f32 {
-  a.x * b.y - a.y * b.x
 }
 
 #[cfg(test)]

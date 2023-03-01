@@ -1,3 +1,4 @@
+use crate::determinant;
 use glam::Vec2;
 
 // A half-plane to act as a constraint on the linear program. This is
@@ -337,10 +338,6 @@ fn solve_linear_program_3d(
   }
 
   best_value
-}
-
-fn determinant(a: Vec2, b: Vec2) -> f32 {
-  a.x * b.y - a.y * b.x
 }
 
 #[cfg(test)]
