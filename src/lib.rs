@@ -1,9 +1,13 @@
 mod common;
 mod linear_programming;
+mod obstacles;
 
 use common::*;
 use glam::Vec2;
 use linear_programming::{solve_linear_program, Line};
+use obstacles::get_lines_for_agent_and_obstacle;
+
+pub use obstacles::Obstacle;
 
 // A single agent in the simulation.
 pub struct Agent {
@@ -24,27 +28,38 @@ impl Agent {
   // avoid running into the agent's `neighbours`. This is not always possible,
   // but agents will attempt to resolve any collisions in a reasonable fashion.
   // The `time_horizon` determines how long in the future should collisions be
-  // considered between agents. The `time_step` helps determine the velocity in
-  // cases of existing collisions, and must be positive.
+  // considered between agents. The `obstacle_time_horizon` determines how long
+  // in the future should collisions be considered for obstacles. The
+  // `time_step` helps determine the velocity in cases of existing collisions,
+  // and must be positive.
   pub fn compute_avoiding_velocity(
     &self,
     neighbours: &[&Agent],
+    obstacles: &[&Obstacle],
     preferred_velocity: Vec2,
     time_horizon: f32,
+    obstacle_time_horizon: f32,
     time_step: f32,
   ) -> Vec2 {
     assert!(time_step > 0.0, "time_step must be positive, was {}", time_step);
 
-    let lines = neighbours
+    let lines = obstacles
       .iter()
-      .map(|neighbour| {
-        self.get_line_for_neighbour(neighbour, time_horizon, time_step)
+      .flat_map(|o| {
+        get_lines_for_agent_and_obstacle(self, o, obstacle_time_horizon)
       })
+      .chain(neighbours.iter().map(|neighbour| {
+        self.get_line_for_neighbour(neighbour, time_horizon, time_step)
+      }))
       .collect::<Vec<Line>>();
+
+    // Since each neighbour generates one line, the number of obstacle lines is
+    // just the other lines.
+    let obstacle_line_count = lines.len() - neighbours.len();
 
     solve_linear_program(
       &lines,
-      /*rigid_constraint_count=*/ 0,
+      obstacle_line_count,
       self.max_velocity,
       preferred_velocity,
     )
