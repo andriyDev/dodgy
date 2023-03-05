@@ -76,11 +76,10 @@ impl Agent {
     // There are two parts to the velocity obstacle induced by `neighbour`.
     // 1) The cut-off circle. This is where the agent collides with `neighbour`
     // after some time (either `time_horizon` or `time_step`).
-    // 2) The cut-off "legs". This is effectively the velocity obstacle's
-    // shadow. Any velocity that is just scaled up from a velocity in the
-    // cut-off circle will also hit `neighbour`.
+    // 2) The cut-off shadow. Any velocity that is just scaled up from a
+    // velocity in the cut-off circle will also hit `neighbour`.
     //
-    // If the relative position and velocity is used, the cut-off for the legs
+    // If the relative position and velocity is used, the cut-off for the shadow
     // will be directed toward the origin.
 
     let relative_neighbour_position = neighbour.position - self.position;
@@ -100,17 +99,16 @@ impl Agent {
     // factoring out those terms and cancelling yields this simpler expression.
     if distance_squared > sum_radius_squared {
       // No collision, so either project on to the cut-off circle, or the
-      // cut-off legs.
+      // cut-off shadow.
       //
-      // As mentioned earlier, the legs act as the shadow of the
-      // cut-off circle. The cut-off legs lie along the tangents of the circle
+      // The edges of the cut-off shadow lies along the tangents of the circle
       // that intersects the origin (since the tangents are the lines that just
       // graze the cut-off circle and so these line divide the "shadowed"
       // velocities from the "unshadowed" velocities).
       //
       // Since the shadows are caused by the tangent lines, velocities should be
       // projected to the cut-off circle when they are on one-side of the
-      // tangent points, and should be projected to the legs when on the
+      // tangent points, and should be projected to the shadow when on the
       // other-side of the tangent points.
 
       let cutoff_circle_center = relative_neighbour_position / time_horizon;
@@ -142,7 +140,7 @@ impl Agent {
           vo_normal * cutoff_circle_radius + cutoff_circle_center;
       } else {
         // The relative velocity is past the cut-off circle tangent points, so
-        // project onto the legs.
+        // project onto the shadow.
 
         let tangent_triangle_leg =
           (distance_squared - sum_radius_squared).sqrt();
@@ -157,27 +155,27 @@ impl Agent {
         // `relative_position`.
 
         // Determine whether the relative velocity is nearer the left or right
-        // leg.
+        // side of the shadow.
         let tangent_side = determinant(
           relative_neighbour_position,
           cutoff_circle_center_to_relative_velocity,
         )
         .signum();
 
-        // Compute the leg direction using the tangent triangle legs, and make
-        // sure to use the correct orientation of that direction (the correct
-        // side of the line is invalid).
-        let leg_direction =
+        // Compute the shadow direction using the tangent triangle legs, and
+        // make sure to use the correct orientation of that direction (the
+        // correct side of the line is invalid).
+        let shadow_direction =
           relative_neighbour_position * tangent_triangle_leg * tangent_side
             + relative_neighbour_position.perp() * sum_radius;
 
-        // Renormalize the leg direction.
-        let leg_direction = leg_direction / distance_squared;
+        // Renormalize the shadow direction.
+        let shadow_direction = shadow_direction / distance_squared;
 
-        vo_normal = leg_direction.perp();
-        // Project onto the leg.
+        vo_normal = shadow_direction.perp();
+        // Project onto the shadow.
         relative_velocity_projected_to_vo =
-          relative_agent_velocity.project_onto_normalized(leg_direction);
+          relative_agent_velocity.project_onto_normalized(shadow_direction);
       }
     } else {
       // Collision. Project on cut-off circle at time `time_step`.
@@ -289,7 +287,7 @@ mod tests {
     }
 
     #[test]
-    fn velocity_projects_to_legs() {
+    fn velocity_projects_to_shadow() {
       line_test_impl(
         Vec2::new(2.0, 2.0),
         Vec2::new(-1.0, 3.0),
