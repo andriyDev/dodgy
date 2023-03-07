@@ -1,6 +1,6 @@
 use glam::Vec2;
 
-use crate::Agent;
+use crate::{Agent, Line};
 
 // A single obstacle in the simulation.
 pub enum Obstacle {
@@ -23,6 +23,6 @@ pub fn get_lines_for_agent_and_obstacle(
   agent: &Agent,
   obstacle: &Obstacle,
   time_horizon: f32,
-) -> Vec<crate::Line> {
+) -> Vec<Line> {
   todo!()
 }
