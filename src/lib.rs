@@ -5,7 +5,7 @@ mod obstacles;
 use common::*;
 use glam::Vec2;
 use linear_programming::{solve_linear_program, Line};
-use obstacles::get_lines_for_agent_and_obstacle;
+use obstacles::get_lines_for_agent_to_obstacle;
 
 pub use obstacles::Obstacle;
 
@@ -46,7 +46,7 @@ impl Agent {
     let lines = obstacles
       .iter()
       .flat_map(|o| {
-        get_lines_for_agent_and_obstacle(self, o, obstacle_time_horizon)
+        get_lines_for_agent_to_obstacle(self, o, obstacle_time_horizon)
       })
       .chain(neighbours.iter().map(|neighbour| {
         self.get_line_for_neighbour(neighbour, time_horizon, time_step)
