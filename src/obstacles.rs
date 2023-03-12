@@ -470,3 +470,309 @@ fn get_line_for_agent_to_edge(
     }
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  macro_rules! assert_line_eq {
+    ($a: expr, $b: expr) => {{
+      let a = $a;
+      let b = $b;
+
+      assert!(
+        a.point.distance_squared(b.point) < 1e-5,
+        "\n  left: {:?}\n right: {:?}",
+        a,
+        b
+      );
+      assert!(
+        a.direction.distance_squared(b.direction) < 1e-5,
+        "\n  left: {:?}\n right: {:?}",
+        a,
+        b
+      );
+    }};
+  }
+
+  #[test]
+  fn covered_edge_is_skipped() {
+    let agent = Agent {
+      position: Vec2::new(0.0, -1.0),
+      velocity: Vec2::new(0.0, 0.0),
+      radius: 1.0,
+      max_velocity: 0.0,
+    };
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: Vec2::new(-1.0, 0.0), convex: true },
+      EdgeVertex { point: Vec2::new(1.0, 0.0), convex: true },
+      None,
+      None,
+      0.5,
+      &[Line { point: Vec2::new(-2.5, 1.5), direction: Vec2::new(-1.0, 1.0) }],
+    );
+
+    assert!(line.is_some(), "Line should have been Some since the existing line did not fully cover the edge.");
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: Vec2::new(-1.0, 0.0), convex: true },
+      EdgeVertex { point: Vec2::new(1.0, 0.0), convex: true },
+      None,
+      None,
+      1.0,
+      &[Line { point: Vec2::new(-3.0, 1.0), direction: Vec2::new(-1.0, 1.0) }],
+    );
+    assert!(line.is_none(), "Line should have been None due to an existing line covering the edge. Line was {:?}", line);
+  }
+
+  #[test]
+  fn agent_collides_with_edge() {
+    let agent = Agent {
+      position: Vec2::new(0.0, -0.1),
+      velocity: Vec2::new(0.0, -1.0),
+      radius: 1.0,
+      max_velocity: 0.0,
+    };
+
+    let vertices =
+      vec![Vec2::new(-1.0, 0.0), Vec2::new(1.0, 0.0), Vec2::new(0.0, 1.0)];
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[0], convex: true },
+      EdgeVertex { point: vertices[1], convex: true },
+      Some(vertices[2]),
+      Some(vertices[2]),
+      1.0,
+      &[],
+    );
+    assert_line_eq!(
+      line.expect("Line should be Some."),
+      Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::ZERO }
+    );
+  }
+
+  #[test]
+  fn agent_collides_with_left_vertex() {
+    let agent = Agent {
+      position: Vec2::new(-1.1, -0.1),
+      velocity: Vec2::new(0.0, -1.0),
+      radius: 1.0,
+      max_velocity: 0.0,
+    };
+
+    let vertices =
+      vec![Vec2::new(-1.0, 0.0), Vec2::new(1.0, 0.0), Vec2::new(0.0, 1.0)];
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[0], convex: true },
+      EdgeVertex { point: vertices[1], convex: true },
+      Some(vertices[2]),
+      Some(vertices[2]),
+      1.0,
+      &[],
+    );
+    assert_line_eq!(
+      line.expect("Line should be Some, but was None."),
+      Line { direction: Vec2::new(-1.0, 1.0).normalize(), point: Vec2::ZERO }
+    );
+  }
+
+  #[test]
+  fn agent_collides_with_right_vertex_with_line() {
+    let agent = Agent {
+      position: Vec2::new(1.1, -0.1),
+      velocity: Vec2::new(0.0, -1.0),
+      radius: 1.0,
+      max_velocity: 0.0,
+    };
+
+    let vertices = vec![Vec2::new(-1.0, 0.0), Vec2::new(1.0, 0.0)];
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[0], convex: true },
+      EdgeVertex { point: vertices[1], convex: true },
+      None,
+      None,
+      1.0,
+      &[],
+    );
+    assert_line_eq!(
+      line.expect("Line should be Some, but was None."),
+      Line { direction: Vec2::new(-1.0, -1.0).normalize(), point: Vec2::ZERO }
+    );
+  }
+
+  #[test]
+  fn agent_collides_with_right_vertex_handled_by_next_edge() {
+    let agent = Agent {
+      position: Vec2::new(1.1, -0.1),
+      velocity: Vec2::new(0.0, -1.0),
+      radius: 1.0,
+      max_velocity: 0.0,
+    };
+
+    let vertices =
+      vec![Vec2::new(-1.0, 0.0), Vec2::new(1.0, 0.0), Vec2::new(0.0, 1.0)];
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[0], convex: true },
+      EdgeVertex { point: vertices[1], convex: true },
+      Some(vertices[2]),
+      Some(vertices[2]),
+      1.0,
+      &[],
+    );
+    assert!(line.is_none(), "The right vertex should be handled by the next edge. The generated line was {:?}", line.unwrap());
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[1], convex: true },
+      EdgeVertex { point: vertices[2], convex: true },
+      Some(vertices[0]),
+      Some(vertices[0]),
+      1.0,
+      &[],
+    );
+    assert!(line.is_some(), "The right vertex should be handled by this edge.");
+  }
+
+  #[test]
+  fn agent_velocity_projects_to_cutoff_line() {
+    let agent = Agent {
+      position: Vec2::new(0.0, -2.0),
+      velocity: Vec2::new(0.5, -1.0),
+      radius: 1.0,
+      max_velocity: 0.0,
+    };
+
+    let vertices =
+      vec![Vec2::new(-1.0, 0.0), Vec2::new(1.0, 0.0), Vec2::new(0.0, 1.0)];
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[0], convex: true },
+      EdgeVertex { point: vertices[1], convex: true },
+      Some(vertices[2]),
+      Some(vertices[2]),
+      0.5,
+      &[],
+    );
+    assert_line_eq!(
+      line.expect("Line should be Some."),
+      Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::new(-2.0, 2.0) }
+    );
+  }
+
+  #[test]
+  fn agent_velocity_projects_to_shadows() {
+    let mut agent = Agent {
+      position: Vec2::new(0.0, -2.0),
+      velocity: Vec2::new(3.0, 3.0),
+      radius: 1.0,
+      max_velocity: 0.0,
+    };
+
+    let vertices =
+      vec![Vec2::new(-1.0, 0.0), Vec2::new(1.0, 0.0), Vec2::new(0.0, 1.0)];
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[0], convex: true },
+      EdgeVertex { point: vertices[1], convex: true },
+      Some(vertices[2]),
+      Some(vertices[2]),
+      0.5,
+      &[],
+    );
+    assert_line_eq!(
+      line.expect("Line should be Some."),
+      Line { direction: Vec2::new(-0.8, -0.6), point: Vec2::new(3.2, 2.4) }
+    );
+
+    agent.velocity = Vec2::new(-3.0, 3.0);
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[0], convex: true },
+      EdgeVertex { point: vertices[1], convex: true },
+      Some(vertices[2]),
+      Some(vertices[2]),
+      0.5,
+      &[],
+    );
+    assert_line_eq!(
+      line.expect("Line should be Some."),
+      Line { direction: Vec2::new(-0.8, 0.6), point: Vec2::new(-3.2, 2.4) }
+    );
+  }
+
+  #[test]
+  fn agent_velocity_projects_to_covered_shadows_creates_no_lines() {
+    let mut agent = Agent {
+      position: Vec2::new(0.0, -2.0),
+      velocity: Vec2::new(-10.0, 0.0),
+      radius: 1.0,
+      max_velocity: 0.0,
+    };
+
+    let vertices = vec![
+      Vec2::new(-2.0, 0.5),
+      Vec2::new(-1.0, 0.0),
+      Vec2::new(1.0, 0.0),
+      Vec2::new(2.0, 0.5),
+    ];
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[1], convex: true },
+      EdgeVertex { point: vertices[2], convex: true },
+      Some(vertices[0]),
+      Some(vertices[3]),
+      0.5,
+      &[],
+    );
+    assert!(line.is_none(), "Left shadow was covered, so the left edge should have taken care of creating the line.");
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[0], convex: true },
+      EdgeVertex { point: vertices[1], convex: true },
+      None,
+      Some(vertices[2]),
+      0.5,
+      &[],
+    );
+    assert!(line.is_some(), "Left shadow was covered for the right edge, so this edge should create a line.");
+
+    agent.velocity = Vec2::new(10.0, 0.0);
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[1], convex: true },
+      EdgeVertex { point: vertices[2], convex: true },
+      Some(vertices[0]),
+      Some(vertices[3]),
+      0.5,
+      &[],
+    );
+    assert!(line.is_none(), "Right shadow was covered, so the right edge should have taken care of creating the line.");
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[2], convex: true },
+      EdgeVertex { point: vertices[3], convex: true },
+      Some(vertices[1]),
+      None,
+      0.5,
+      &[],
+    );
+    assert!(line.is_some(), "Right shadow was covered for the left edge, so this edge should create a line.");
+  }
+}
