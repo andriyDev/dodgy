@@ -142,6 +142,18 @@ fn get_line_for_agent_to_edge(
   let relative_left_vertex = left_vertex.point - agent.position;
   let relative_right_vertex = right_vertex.point - agent.position;
 
+  let edge_vector = right_vertex.point - left_vertex.point;
+  let agent_from_left_vertex = -relative_left_vertex;
+
+  // If the agent is already on the wrong side of the edge, then either the
+  // agent is outside the obstacle and there is a "front side" to the obstacle
+  // that will add necessary constraints, or the agent is already inside the
+  // obstacle. In either case, adding constraints will block the agent from
+  // moving.
+  if determinant(agent_from_left_vertex, edge_vector) < 0.0 {
+    return None;
+  }
+
   fn is_edge_covered(
     left_vertex: Vec2,
     right_vertex: Vec2,
@@ -180,9 +192,6 @@ fn get_line_for_agent_to_edge(
     return None;
   }
 
-  let agent_from_left_vertex = -relative_left_vertex;
-
-  let edge_vector = right_vertex.point - left_vertex.point;
   let edge_unit_vector = edge_vector.normalize();
 
   let dist_left_squared = relative_left_vertex.length_squared();
