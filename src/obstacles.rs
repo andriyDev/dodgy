@@ -434,18 +434,19 @@ fn get_line_for_agent_to_edge(
     if t_cutoff_edge < 0.0 || t_cutoff_edge > 1.0 || is_degenerate_edge {
       f32::INFINITY
     } else {
-      (velocity - left_cutoff + t_cutoff_edge * cutoff_vector).length_squared()
+      (velocity - (left_cutoff + t_cutoff_edge * cutoff_vector))
+        .length_squared()
     };
   let left_shadow_distance_squared = if t_left_shadow < 0.0 {
     f32::INFINITY
   } else {
-    (velocity - left_cutoff + t_left_shadow * left_shadow_direction)
+    (velocity - (left_cutoff + t_left_shadow * left_shadow_direction))
       .length_squared()
   };
   let right_shadow_distance_squared = if t_right_shadow < 0.0 {
     f32::INFINITY
   } else {
-    (velocity - right_cutoff + t_right_shadow * right_shadow_direction)
+    (velocity - (right_cutoff + t_right_shadow * right_shadow_direction))
       .length_squared()
   };
 
