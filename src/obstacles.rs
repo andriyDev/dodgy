@@ -785,4 +785,42 @@ mod tests {
     );
     assert!(line.is_some(), "Right shadow was covered for the left edge, so this edge should create a line.");
   }
+
+  #[test]
+  fn backwards_edges_are_ignored() {
+    let agent = Agent {
+      position: Vec2::new(0.0, 0.0),
+      velocity: Vec2::new(0.0, 0.0),
+      radius: 1.0,
+      max_velocity: 0.0,
+    };
+
+    let vertices = vec![Vec2::new(-1.0, -1.0), Vec2::new(-1.0, 1.0)];
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[0], convex: true },
+      EdgeVertex { point: vertices[1], convex: true },
+      None,
+      None,
+      1.0,
+      &[],
+    );
+    assert!(line.is_some(), "Forward edges should not be ignored.");
+
+    let line = get_line_for_agent_to_edge(
+      &agent,
+      EdgeVertex { point: vertices[1], convex: true },
+      EdgeVertex { point: vertices[0], convex: true },
+      None,
+      None,
+      1.0,
+      &[],
+    );
+    assert!(
+      line.is_none(),
+      "Backward edges should be ignored. {:?}",
+      line.unwrap()
+    );
+  }
 }
