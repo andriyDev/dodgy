@@ -1,6 +1,7 @@
 mod common;
 mod linear_programming;
 mod obstacles;
+mod visibility_set;
 
 use common::*;
 use glam::Vec2;
@@ -8,6 +9,8 @@ use linear_programming::{solve_linear_program, Line};
 use obstacles::get_lines_for_agent_to_obstacle;
 
 pub use obstacles::Obstacle;
+
+pub use visibility_set::VisibilitySet;
 
 // A single agent in the simulation.
 pub struct Agent {
