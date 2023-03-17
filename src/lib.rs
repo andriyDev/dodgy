@@ -210,62 +210,29 @@ impl Agent {
 mod tests {
   use super::*;
 
-  const EPSILON: f32 = 0.00001;
-
   mod get_line_for_neighbour_tests {
     use glam::Vec2;
 
-    use super::{Agent, Line, EPSILON};
+    use super::{Agent, Line};
 
-    fn line_test_impl(
-      position_relative: Vec2,
-      velocity_relative: Vec2,
-      sum_radius: f32,
-      time_horizon: f32,
-      time_step: f32,
-      expected_line: Line,
-    ) {
-      let agent = Agent {
-        position: Vec2::ZERO,
-        velocity: velocity_relative,
-        radius: sum_radius - 1.0,
-        max_velocity: 0.0,
-      };
+    macro_rules! assert_line_eq {
+      ($a: expr, $b: expr) => {{
+        let a = $a;
+        let b = $b;
 
-      let neighbour = Agent {
-        position: position_relative,
-        velocity: Vec2::ZERO,
-        radius: 1.0,
-        max_velocity: 0.0,
-      };
-
-      let actual_line =
-        agent.get_line_for_neighbour(&neighbour, time_horizon, time_step);
-      let actual_direction_length = actual_line.direction.length();
-      assert!(
-        (actual_direction_length - 1.0).abs() < EPSILON,
-        "\nLine: {:?}\nDirection Length: {}",
-        actual_line,
-        actual_direction_length
-      );
-      assert!(
-        (actual_line.direction.dot(expected_line.direction) - 1.0).abs()
-          < EPSILON,
-        "\nActual line: {:?}\nExpected line: {:?}",
-        actual_line,
-        expected_line
-      );
-
-      let distance_between_lines = (actual_line.point - expected_line.point)
-        .dot(expected_line.direction.perp())
-        .abs();
-      assert!(
-        distance_between_lines < EPSILON,
-        "\nActual line: {:?}\nExpected line: {:?}\nDistance between lines: {}",
-        actual_line,
-        expected_line,
-        distance_between_lines
-      );
+        assert!(
+          a.point.distance_squared(b.point) < 1e-5,
+          "\n  left: {:?}\n right: {:?}",
+          a,
+          b
+        );
+        assert!(
+          a.direction.distance_squared(b.direction) < 1e-5,
+          "\n  left: {:?}\n right: {:?}",
+          a,
+          b
+        );
+      }};
     }
 
     #[test]
@@ -273,70 +240,122 @@ mod tests {
       let position = Vec2::new(1.0, 2.0);
       let radius = 2.0;
 
+      let agent = Agent {
+        position: Vec2::ZERO,
+        velocity: Vec2::ZERO,
+        radius: radius - 1.0,
+        max_velocity: 0.0,
+      };
+
+      let neighbour = Agent {
+        position: position,
+        velocity: Vec2::ZERO,
+        radius: 1.0,
+        max_velocity: 0.0,
+      };
+
+      let actual_line = agent.get_line_for_neighbour(
+        &neighbour, /*time_horizon=*/ 1.0, /*time_step=*/ 1.0,
+      );
       // The agent's velocity projects directly onto the cut-off circle, then
       // the agent takes 50% of the responsibility of avoidance.
-      line_test_impl(
-        /*position=*/ position,
-        /*velocity=*/ Vec2::new(0.0, 0.0),
-        /*sum_radius=*/ radius,
-        /*time_horizon=*/ 1.0,
-        /*time_step=*/ 1.0,
-        /*expected_line=*/
+      assert_line_eq!(
+        actual_line,
         Line {
           point: position.normalize() * (position.length() - radius) * 0.5,
           direction: position.perp().normalize(),
-        },
+        }
       );
     }
 
     #[test]
     fn velocity_projects_to_shadow() {
-      line_test_impl(
-        Vec2::new(2.0, 2.0),
-        Vec2::new(-1.0, 3.0),
-        2.0,
-        1.0,
-        1.0,
-        Line { point: Vec2::new(-0.5, 0.0), direction: Vec2::new(0.0, 1.0) },
+      let mut agent = Agent {
+        position: Vec2::ZERO,
+        velocity: Vec2::new(-1.0, 3.0),
+        radius: 1.0,
+        max_velocity: 0.0,
+      };
+
+      let neighbour = Agent {
+        position: Vec2::new(2.0, 2.0),
+        velocity: Vec2::ZERO,
+        radius: 1.0,
+        max_velocity: 0.0,
+      };
+
+      let inside_shadow_line = agent.get_line_for_neighbour(
+        &neighbour, /*time_horizon=*/ 1.0, /*time_step=*/ 1.0,
+      );
+      assert_line_eq!(
+        inside_shadow_line,
+        Line { point: Vec2::new(-0.5, 3.0), direction: Vec2::new(0.0, 1.0) }
       );
 
-      line_test_impl(
-        Vec2::new(2.0, 2.0),
-        Vec2::new(10.0, -1.0),
-        2.0,
-        1.0,
-        1.0,
-        Line { point: Vec2::new(0.0, -0.5), direction: Vec2::new(-1.0, 0.0) },
+      agent.velocity = Vec2::new(10.0, -1.0);
+
+      let outside_shadow_line = agent.get_line_for_neighbour(
+        &neighbour, /*time_horizon=*/ 1.0, /*time_step=*/ 1.0,
+      );
+      assert_line_eq!(
+        outside_shadow_line,
+        Line { point: Vec2::new(10.0, -0.5), direction: Vec2::new(-1.0, 0.0) }
       );
     }
 
     #[test]
     fn collision_uses_time_step() {
-      line_test_impl(
-        Vec2::new(2.0, 2.0),
-        Vec2::new(0.0, 0.0),
-        4.0,
-        1.0,
-        0.5,
+      let agent = Agent {
+        position: Vec2::ZERO,
+        velocity: Vec2::new(0.0, 0.0),
+        radius: 2.0,
+        max_velocity: 0.0,
+      };
+
+      let neighbour = Agent {
+        position: Vec2::new(2.0, 2.0),
+        velocity: Vec2::ZERO,
+        radius: 2.0,
+        max_velocity: 0.0,
+      };
+
+      let collision_line = agent.get_line_for_neighbour(
+        &neighbour, /*time_horizon=*/ 1.0, /*time_step=*/ 0.5,
+      );
+      assert_line_eq!(
+        collision_line,
         Line {
           point: (Vec2::ONE.normalize() * -8.0 + Vec2::new(4.0, 4.0)) * 0.5,
           direction: Vec2::new(-1.0, 1.0).normalize(),
-        },
+        }
       );
     }
 
     #[test]
     fn no_collision_uses_time_horizon() {
-      line_test_impl(
-        Vec2::new(2.0, 2.0),
-        Vec2::new(0.0, 0.0),
-        2.0,
-        2.0,
-        0.5,
+      let agent = Agent {
+        position: Vec2::ZERO,
+        velocity: Vec2::new(0.0, 0.0),
+        radius: 1.0,
+        max_velocity: 0.0,
+      };
+
+      let neighbour = Agent {
+        position: Vec2::new(2.0, 2.0),
+        velocity: Vec2::ZERO,
+        radius: 1.0,
+        max_velocity: 0.0,
+      };
+
+      let collision_line = agent.get_line_for_neighbour(
+        &neighbour, /*time_horizon=*/ 2.0, /*time_step=*/ 0.5,
+      );
+      assert_line_eq!(
+        collision_line,
         Line {
           point: (-Vec2::ONE.normalize() + Vec2::new(1.0, 1.0)) * 0.5,
           direction: Vec2::new(-1.0, 1.0).normalize(),
-        },
+        }
       );
     }
   }
