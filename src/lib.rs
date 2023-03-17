@@ -19,10 +19,17 @@ pub struct Agent {
   // The current velocity of the agent.
   pub velocity: Vec2,
 
-  // The radius of the agent. Agents will use this to avoid bumping into each other.
+  // The radius of the agent. Agents will use this to avoid bumping into each
+  // other.
   pub radius: f32,
   // The maximum velocity the agent is allowed to move at.
   pub max_velocity: f32,
+
+  // The amount of responsibility an agent has to avoid other agents. The amount
+  // of avoidance between two agents is then dependent on the ratio of the
+  // responsibility between the agents. Note this does not affect avoidance of
+  // obstacles.
+  pub avoidance_responsibility: f32,
 }
 
 impl Agent {
@@ -95,6 +102,7 @@ impl Agent {
 
     let vo_normal;
     let relative_velocity_projected_to_vo;
+    let inside_vo;
 
     // Find out if the agent is inside the cut-off circle. Note: since both the
     // distance to the cut-off circle and the radius of the cut-off circle is
@@ -141,6 +149,8 @@ impl Agent {
           cutoff_circle_center_to_relative_velocity.normalize_or_zero();
         relative_velocity_projected_to_vo =
           vo_normal * cutoff_circle_radius + cutoff_circle_center;
+        inside_vo = cutoff_circle_center_to_relative_velocity_length_squared
+          < cutoff_circle_radius * cutoff_circle_radius;
       } else {
         // The relative velocity is past the cut-off circle tangent points, so
         // project onto the shadow.
@@ -179,6 +189,11 @@ impl Agent {
         // Project onto the shadow.
         relative_velocity_projected_to_vo =
           relative_agent_velocity.project_onto_normalized(shadow_direction);
+        // The velocity is inside the VO if it is to the left of the left
+        // shadow, or the right of the right shadow.
+        inside_vo = determinant(relative_agent_velocity, shadow_direction)
+          * tangent_side
+          >= 0.0;
       }
     } else {
       // Collision. Project on cut-off circle at time `time_step`.
@@ -196,13 +211,24 @@ impl Agent {
       // agent's velocity projected to the circle).
       relative_velocity_projected_to_vo =
         vo_normal * cutoff_circle_radius + cutoff_circle_center;
+      inside_vo = true;
     }
 
     // As in the paper, `u` is the vector from the relative velocity to the
     // nearest point outside the velocity obstacle.
     let u = relative_velocity_projected_to_vo - relative_agent_velocity;
 
-    Line { point: self.velocity + u * 0.5, direction: -vo_normal.perp() }
+    let responsibility = if inside_vo {
+      self.avoidance_responsibility
+        / (self.avoidance_responsibility + neighbour.avoidance_responsibility)
+    } else {
+      1.0
+    };
+
+    Line {
+      point: self.velocity + u * responsibility,
+      direction: -vo_normal.perp(),
+    }
   }
 }
 
@@ -244,6 +270,7 @@ mod tests {
         position: Vec2::ZERO,
         velocity: Vec2::ZERO,
         radius: radius - 1.0,
+        avoidance_responsibility: 1.0,
         max_velocity: 0.0,
       };
 
@@ -251,18 +278,18 @@ mod tests {
         position: position,
         velocity: Vec2::ZERO,
         radius: 1.0,
+        avoidance_responsibility: 1.0,
         max_velocity: 0.0,
       };
 
       let actual_line = agent.get_line_for_neighbour(
         &neighbour, /*time_horizon=*/ 1.0, /*time_step=*/ 1.0,
       );
-      // The agent's velocity projects directly onto the cut-off circle, then
-      // the agent takes 50% of the responsibility of avoidance.
+      // The agent's velocity projects directly onto the cut-off circle.
       assert_line_eq!(
         actual_line,
         Line {
-          point: position.normalize() * (position.length() - radius) * 0.5,
+          point: position.normalize() * (position.length() - radius),
           direction: position.perp().normalize(),
         }
       );
@@ -275,6 +302,7 @@ mod tests {
         velocity: Vec2::new(-1.0, 3.0),
         radius: 1.0,
         max_velocity: 0.0,
+        avoidance_responsibility: 1.0,
       };
 
       let neighbour = Agent {
@@ -282,6 +310,7 @@ mod tests {
         velocity: Vec2::ZERO,
         radius: 1.0,
         max_velocity: 0.0,
+        avoidance_responsibility: 1.0,
       };
 
       let inside_shadow_line = agent.get_line_for_neighbour(
@@ -289,7 +318,7 @@ mod tests {
       );
       assert_line_eq!(
         inside_shadow_line,
-        Line { point: Vec2::new(-0.5, 3.0), direction: Vec2::new(0.0, 1.0) }
+        Line { point: Vec2::new(0.0, 3.0), direction: Vec2::new(0.0, 1.0) }
       );
 
       agent.velocity = Vec2::new(10.0, -1.0);
@@ -310,6 +339,7 @@ mod tests {
         velocity: Vec2::new(0.0, 0.0),
         radius: 2.0,
         max_velocity: 0.0,
+        avoidance_responsibility: 1.0,
       };
 
       let neighbour = Agent {
@@ -317,6 +347,7 @@ mod tests {
         velocity: Vec2::ZERO,
         radius: 2.0,
         max_velocity: 0.0,
+        avoidance_responsibility: 1.0,
       };
 
       let collision_line = agent.get_line_for_neighbour(
@@ -338,6 +369,7 @@ mod tests {
         velocity: Vec2::new(0.0, 0.0),
         radius: 1.0,
         max_velocity: 0.0,
+        avoidance_responsibility: 1.0,
       };
 
       let neighbour = Agent {
@@ -345,6 +377,7 @@ mod tests {
         velocity: Vec2::ZERO,
         radius: 1.0,
         max_velocity: 0.0,
+        avoidance_responsibility: 1.0,
       };
 
       let collision_line = agent.get_line_for_neighbour(
@@ -353,9 +386,63 @@ mod tests {
       assert_line_eq!(
         collision_line,
         Line {
-          point: (-Vec2::ONE.normalize() + Vec2::new(1.0, 1.0)) * 0.5,
+          point: -Vec2::ONE.normalize() + Vec2::new(1.0, 1.0),
           direction: Vec2::new(-1.0, 1.0).normalize(),
         }
+      );
+    }
+
+    #[test]
+    fn uses_avoidance_responsibility() {
+      let agent = Agent {
+        position: Vec2::ZERO,
+        velocity: Vec2::new(1.5, 0.0),
+        radius: 1.0,
+        avoidance_responsibility: 1.0,
+        max_velocity: 0.0,
+      };
+
+      let neighbour = Agent {
+        position: Vec2::new(4.0, 0.0),
+        velocity: Vec2::ZERO,
+        radius: 1.0,
+        avoidance_responsibility: 3.0,
+        max_velocity: 0.0,
+      };
+
+      let actual_line = agent.get_line_for_neighbour(
+        &neighbour, /*time_horizon=*/ 2.0, /*time_step=*/ 0.5,
+      );
+      assert_line_eq!(
+        actual_line,
+        Line { point: Vec2::new(1.375, 0.0), direction: Vec2::new(0.0, 1.0) }
+      );
+    }
+
+    #[test]
+    fn uses_avoidance_responsibility_only_when_inside_vo() {
+      let agent = Agent {
+        position: Vec2::ZERO,
+        velocity: Vec2::new(0.5, 0.0),
+        radius: 1.0,
+        avoidance_responsibility: 1.0,
+        max_velocity: 0.0,
+      };
+
+      let neighbour = Agent {
+        position: Vec2::new(4.0, 0.0),
+        velocity: Vec2::ZERO,
+        radius: 1.0,
+        avoidance_responsibility: 3.0,
+        max_velocity: 0.0,
+      };
+
+      let actual_line = agent.get_line_for_neighbour(
+        &neighbour, /*time_horizon=*/ 2.0, /*time_step=*/ 0.5,
+      );
+      assert_line_eq!(
+        actual_line,
+        Line { point: Vec2::new(1.0, 0.0), direction: Vec2::new(0.0, 1.0) }
       );
     }
   }

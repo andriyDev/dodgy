@@ -512,6 +512,7 @@ mod tests {
       velocity: Vec2::new(0.0, 0.0),
       radius: 1.0,
       max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
     };
 
     let line = get_line_for_agent_to_edge(
@@ -545,6 +546,7 @@ mod tests {
       velocity: Vec2::new(0.0, -1.0),
       radius: 1.0,
       max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
     };
 
     let vertices =
@@ -572,6 +574,7 @@ mod tests {
       velocity: Vec2::new(0.0, -1.0),
       radius: 1.0,
       max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
     };
 
     let vertices =
@@ -599,6 +602,7 @@ mod tests {
       velocity: Vec2::new(0.0, -1.0),
       radius: 1.0,
       max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
     };
 
     let vertices = vec![Vec2::new(-1.0, 0.0), Vec2::new(1.0, 0.0)];
@@ -625,6 +629,7 @@ mod tests {
       velocity: Vec2::new(0.0, -1.0),
       radius: 1.0,
       max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
     };
 
     let vertices =
@@ -660,6 +665,7 @@ mod tests {
       velocity: Vec2::new(0.5, -1.0),
       radius: 1.0,
       max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
     };
 
     let vertices =
@@ -687,6 +693,7 @@ mod tests {
       velocity: Vec2::new(3.0, 3.0),
       radius: 1.0,
       max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
     };
 
     let vertices =
@@ -730,6 +737,7 @@ mod tests {
       velocity: Vec2::new(-10.0, 0.0),
       radius: 1.0,
       max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
     };
 
     let vertices = vec![
@@ -793,6 +801,7 @@ mod tests {
       velocity: Vec2::new(0.0, 0.0),
       radius: 1.0,
       max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
     };
 
     let vertices = vec![Vec2::new(-1.0, -1.0), Vec2::new(-1.0, 1.0)];
