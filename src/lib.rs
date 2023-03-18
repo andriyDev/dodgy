@@ -1,6 +1,7 @@
 mod common;
 mod linear_programming;
 mod obstacles;
+mod simulator;
 mod visibility_set;
 
 use common::*;
@@ -10,6 +11,7 @@ use obstacles::get_lines_for_agent_to_obstacle;
 
 pub use obstacles::Obstacle;
 
+pub use simulator::Simulator;
 pub use visibility_set::VisibilitySet;
 
 // A single agent in the simulation.
