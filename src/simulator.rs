@@ -17,6 +17,14 @@ pub struct AgentParameters {
 }
 
 impl Simulator {
+  pub fn new() -> Simulator {
+    Self {
+      agents: Vec::new(),
+      agent_parameters: Vec::new(),
+      obstacles: Vec::new(),
+    }
+  }
+
   pub fn add_agent(&mut self, agent: Agent, agent_parameters: AgentParameters) {
     self.agents.push(agent);
     self.agent_parameters.push(agent_parameters);
