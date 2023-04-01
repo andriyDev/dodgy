@@ -32,7 +32,7 @@ use obstacles::get_lines_for_agent_to_obstacle;
 
 pub use obstacles::Obstacle;
 
-pub use simulator::Simulator;
+pub use simulator::{AgentParameters, Simulator};
 pub use visibility_set::VisibilitySet;
 
 // A single agent in the simulation.
@@ -48,10 +48,10 @@ pub struct Agent {
   // The maximum velocity the agent is allowed to move at.
   pub max_velocity: f32,
 
-  // The amount of responsibility an agent has to avoid other agents. The amount
-  // of avoidance between two agents is then dependent on the ratio of the
-  // responsibility between the agents. Note this does not affect avoidance of
-  // obstacles.
+  // The amount of responsibility an agent has to avoid other agents. The
+  // amount of avoidance between two agents is then dependent on the ratio of
+  // the responsibility between the agents. Note this does not affect
+  // avoidance of obstacles.
   pub avoidance_responsibility: f32,
 }
 
@@ -306,7 +306,7 @@ mod tests {
       };
 
       let actual_line = agent.get_line_for_neighbour(
-        &neighbour, /*time_horizon=*/ 1.0, /*time_step=*/ 1.0,
+        &neighbour, /* time_horizon= */ 1.0, /* time_step= */ 1.0,
       );
       // The agent's velocity projects directly onto the cut-off circle.
       assert_line_eq!(
@@ -337,7 +337,7 @@ mod tests {
       };
 
       let inside_shadow_line = agent.get_line_for_neighbour(
-        &neighbour, /*time_horizon=*/ 1.0, /*time_step=*/ 1.0,
+        &neighbour, /* time_horizon= */ 1.0, /* time_step= */ 1.0,
       );
       assert_line_eq!(
         inside_shadow_line,
@@ -347,7 +347,7 @@ mod tests {
       agent.velocity = Vec2::new(10.0, -1.0);
 
       let outside_shadow_line = agent.get_line_for_neighbour(
-        &neighbour, /*time_horizon=*/ 1.0, /*time_step=*/ 1.0,
+        &neighbour, /* time_horizon= */ 1.0, /* time_step= */ 1.0,
       );
       assert_line_eq!(
         outside_shadow_line,
@@ -374,7 +374,7 @@ mod tests {
       };
 
       let collision_line = agent.get_line_for_neighbour(
-        &neighbour, /*time_horizon=*/ 1.0, /*time_step=*/ 0.5,
+        &neighbour, /* time_horizon= */ 1.0, /* time_step= */ 0.5,
       );
       assert_line_eq!(
         collision_line,
@@ -404,7 +404,7 @@ mod tests {
       };
 
       let collision_line = agent.get_line_for_neighbour(
-        &neighbour, /*time_horizon=*/ 2.0, /*time_step=*/ 0.5,
+        &neighbour, /* time_horizon= */ 2.0, /* time_step= */ 0.5,
       );
       assert_line_eq!(
         collision_line,
@@ -434,7 +434,7 @@ mod tests {
       };
 
       let actual_line = agent.get_line_for_neighbour(
-        &neighbour, /*time_horizon=*/ 2.0, /*time_step=*/ 0.5,
+        &neighbour, /* time_horizon= */ 2.0, /* time_step= */ 0.5,
       );
       assert_line_eq!(
         actual_line,
@@ -461,7 +461,7 @@ mod tests {
       };
 
       let actual_line = agent.get_line_for_neighbour(
-        &neighbour, /*time_horizon=*/ 2.0, /*time_step=*/ 0.5,
+        &neighbour, /* time_horizon= */ 2.0, /* time_step= */ 0.5,
       );
       assert_line_eq!(
         actual_line,
