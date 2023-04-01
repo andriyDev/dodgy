@@ -283,7 +283,12 @@ fn get_line_for_agent_to_edge(
     // The right vertex is covered by the shadow of the left, so the shadow is
     // only defined by the left vertex.
 
-    // TODO: Figure out why.
+    // If the left vertex is convex, and the left's shadow covers the edge,
+    // there is no need to generate a constraint (since the left vertex should
+    // be covered by another edge's constraint later on). In other words, since
+    // the vertex is concave, some other edge should be in front of this one,
+    // and since the vertex's shadow covers the edge, there is no new
+    // constraints to be gained here.
     if !left_vertex.convex {
       return None;
     }
@@ -305,7 +310,7 @@ fn get_line_for_agent_to_edge(
     // The left vertex is covered by the shadow of the right, so the shadow is
     // only defined by the right vertex.
 
-    // TODO: Figure out why.
+    // See the left vertex handling for the reasoning.
     if !right_vertex.convex {
       return None;
     }
@@ -1137,6 +1142,50 @@ mod tests {
           point: Vec2::new(0.0, 2.0),
         },
       ]
+    );
+  }
+
+  #[test]
+  fn no_line_for_projecting_to_concave_endpoint_covered_by_shadow() {
+    let agent = Agent {
+      position: Vec2::ZERO,
+      velocity: Vec2::ZERO,
+      radius: 0.0,
+      max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
+    };
+
+    // Use the looping part of the obstacle to prevent the edge (0,2)-to-(0,4)
+    // being ignored.
+    let obstacle = Obstacle::Closed {
+      vertices: vec![
+        Vec2::new(1.0, 1.0),
+        Vec2::new(0.0, 2.0),
+        Vec2::new(0.0, 4.0),
+        Vec2::new(-1.0, 1.0),
+      ],
+    };
+
+    // The (0,2)-to-(0,4) edge does not generate a constraint.
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::new(-1.0, 1.0) }]
+    );
+
+    // Repeat to use the other endpoint.
+    let obstacle = Obstacle::Closed {
+      vertices: vec![
+        Vec2::new(1.0, 1.0),
+        Vec2::new(0.0, 4.0),
+        Vec2::new(0.0, 2.0),
+        Vec2::new(-1.0, 1.0),
+      ],
+    };
+
+    // The (0,4)-to-(0,2) edge does not generate a constraint.
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::new(-1.0, 1.0) }]
     );
   }
 }
