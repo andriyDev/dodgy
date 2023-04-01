@@ -25,12 +25,12 @@ use crate::{common::determinant, Agent, Line};
 
 // A single obstacle in the simulation.
 pub enum Obstacle {
-  // A closed obstacle. The obstacle is closed in that the last vertex will have
-  // an edge connecting it to the first vertex. The edges cannot cross, and the
-  // interior of the obstacle is to the "left" of the edges. In other words,
-  // obstacles with vertices going counter-clockwise will prevent objects from
-  // getting into the loop, and obstacles with vertices going clockwise will
-  // prevent objects from leaving the loop.
+  // A closed obstacle. The obstacle is closed in that the last vertex will
+  // have an edge connecting it to the first vertex. The edges cannot cross,
+  // and the interior of the obstacle is to the "left" of the edges. In
+  // other words, obstacles with vertices going counter-clockwise will
+  // prevent objects from getting into the loop, and obstacles with vertices
+  // going clockwise will prevent objects from leaving the loop.
   Closed { vertices: Vec<Vec2> },
   // An open obstacle. The vertices are assumed to be a part of some closed
   // obstacle, so the left of the edge is solid, and the right is clear.
@@ -851,6 +851,292 @@ mod tests {
       line.is_none(),
       "Backward edges should be ignored. {:?}",
       line.unwrap()
+    );
+  }
+
+  #[test]
+  fn velocity_projects_to_cutoff_endpoints() {
+    let mut agent = Agent {
+      position: Vec2::ZERO,
+      velocity: Vec2::new(3.0, 0.0),
+      radius: 0.0,
+      max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
+    };
+
+    assert_line_eq!(
+      get_line_for_agent_to_edge(
+        &agent,
+        EdgeVertex { point: Vec2::new(-1.0, 2.0), convex: true },
+        EdgeVertex { point: Vec2::new(1.0, 2.0), convex: true },
+        None,
+        None,
+        1.0,
+        &[],
+      )
+      .unwrap(),
+      Line {
+        direction: Vec2::new(-1.0, -1.0).normalize(),
+        point: Vec2::new(1.0, 2.0)
+      }
+    );
+
+    agent.velocity = Vec2::new(-3.0, 0.0);
+
+    assert_line_eq!(
+      get_line_for_agent_to_edge(
+        &agent,
+        EdgeVertex { point: Vec2::new(-1.0, 2.0), convex: true },
+        EdgeVertex { point: Vec2::new(1.0, 2.0), convex: true },
+        None,
+        None,
+        1.0,
+        &[],
+      )
+      .unwrap(),
+      Line {
+        direction: Vec2::new(-1.0, 1.0).normalize(),
+        point: Vec2::new(-1.0, 2.0)
+      }
+    );
+  }
+
+  #[test]
+  fn velocity_projects_to_degenerate_edge() {
+    let agent = Agent {
+      position: Vec2::ZERO,
+      velocity: Vec2::ZERO,
+      radius: 0.0,
+      max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
+    };
+
+    assert_line_eq!(
+      get_line_for_agent_to_edge(
+        &agent,
+        EdgeVertex { point: Vec2::new(0.0, 2.0), convex: true },
+        EdgeVertex { point: Vec2::new(0.0, 2.0), convex: true },
+        None,
+        None,
+        1.0,
+        &[],
+      )
+      .unwrap(),
+      Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::new(0.0, 2.0) }
+    );
+  }
+
+  #[test]
+  fn shadow_of_endpoint_covers_edge() {
+    let mut agent = Agent {
+      position: Vec2::ZERO,
+      velocity: Vec2::new(-0.5, 3.0),
+      radius: 1.0,
+      max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
+    };
+
+    // Right endpoint shadow covers edge.
+    assert_line_eq!(
+      get_line_for_agent_to_edge(
+        &agent,
+        EdgeVertex { point: Vec2::new(-1.0, 4.0), convex: true },
+        EdgeVertex { point: Vec2::new(0.0, 2.0f32.sqrt()), convex: true },
+        None,
+        None,
+        1.0,
+        &[],
+      )
+      .unwrap(),
+      // The line follows the shadow, rather than the edge.
+      Line {
+        direction: Vec2::new(-1.0, 1.0).normalize(),
+        point: Vec2::new(-1.0, 1.0).normalize()
+      }
+    );
+
+    agent.velocity = Vec2::new(0.5, 3.0);
+
+    // Left endpoint shadow covers edge.
+    assert_line_eq!(
+      get_line_for_agent_to_edge(
+        &agent,
+        EdgeVertex { point: Vec2::new(0.0, 2.0f32.sqrt()), convex: true },
+        EdgeVertex { point: Vec2::new(1.0, 4.0), convex: true },
+        None,
+        None,
+        1.0,
+        &[],
+      )
+      .unwrap(),
+      // The line follows the shadow, rather than the edge.
+      Line {
+        direction: Vec2::new(-1.0, -1.0).normalize(),
+        point: Vec2::new(1.0, 1.0).normalize()
+      }
+    );
+  }
+
+  macro_rules! assert_lines_eq_unordered {
+    ($left: expr, $right: expr) => {{
+      let left = $left;
+      let right = $right;
+      let mut left_not_found = Vec::new();
+      let mut right_not_found = right.iter().cloned().collect::<Vec<Line>>();
+
+      for left_line in left.iter() {
+        let mut found_index = None;
+        for (right_index, right_line) in right_not_found.iter().enumerate() {
+          if left_line.point.distance_squared(right_line.point) < 1e-5
+            && left_line.direction.distance_squared(right_line.direction) < 1e-5
+          {
+            found_index = Some(right_index);
+            break;
+          }
+        }
+        if let Some(found_index) = found_index {
+          right_not_found.remove(found_index);
+        } else {
+          left_not_found.push(left_line);
+        }
+      }
+
+      if !left_not_found.is_empty() || !right_not_found.is_empty() {
+        panic!("Left lines did not match right lines.\n\nleft={:?}\nright={:?}\n\nunmatched left={:?}\nunmatched right={:?}", left, right, left_not_found, right_not_found);
+      }
+    }};
+  }
+
+  #[test]
+  fn lines_generated_for_closed_convex_obstacle() {
+    let mut agent = Agent {
+      position: Vec2::ZERO,
+      velocity: Vec2::new(0.5, 3.0),
+      radius: 0.0,
+      max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
+    };
+
+    let obstacle = Obstacle::Closed {
+      vertices: vec![
+        Vec2::new(4.0, 4.0),
+        Vec2::new(-4.0, 4.0),
+        Vec2::new(0.0, 2.0),
+      ],
+    };
+
+    // Velocity projects to one of the obstacle's edges.
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [Line {
+        direction: Vec2::new(-2.0, -1.0).normalize(),
+        point: Vec2::new(0.0, 2.0),
+      }]
+    );
+
+    agent.velocity = Vec2::new(-0.5, 3.0);
+
+    // Velocity projects across looping vertices.
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [Line {
+        direction: Vec2::new(-2.0, 1.0).normalize(),
+        point: Vec2::new(-4.0, 4.0),
+      }]
+    );
+
+    agent.velocity = Vec2::new(2.0, 7.0);
+
+    // Velocity projects to obstacle's shadow.
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [Line {
+        direction: Vec2::new(-1.0, -1.0).normalize(),
+        point: Vec2::new(4.0, 4.0),
+      }]
+    );
+  }
+
+  #[test]
+  fn lines_generated_for_open_convex_obstacle() {
+    let mut agent = Agent {
+      position: Vec2::ZERO,
+      velocity: Vec2::new(0.5, 3.0),
+      radius: 0.0,
+      max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
+    };
+
+    let obstacle = Obstacle::Open {
+      vertices: vec![
+        Vec2::new(-4.0, 4.0),
+        Vec2::new(0.0, 2.0),
+        Vec2::new(4.0, 4.0),
+      ],
+    };
+
+    // Velocity projects to one of the obstacle's edges.
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [Line {
+        direction: Vec2::new(-2.0, -1.0).normalize(),
+        point: Vec2::new(0.0, 2.0),
+      }]
+    );
+
+    agent.velocity = Vec2::new(-0.5, 3.0);
+
+    // Velocity projects to another of the obstacle's edges.
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [Line {
+        direction: Vec2::new(-2.0, 1.0).normalize(),
+        point: Vec2::new(-4.0, 4.0),
+      }]
+    );
+
+    agent.velocity = Vec2::new(2.0, 7.0);
+
+    // Velocity projects to obstacle's shadow.
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [Line {
+        direction: Vec2::new(-1.0, -1.0).normalize(),
+        point: Vec2::new(4.0, 4.0),
+      }]
+    );
+  }
+
+  #[test]
+  fn velocity_projects_to_concave_corner() {
+    let agent = Agent {
+      position: Vec2::ZERO,
+      velocity: Vec2::new(0.0, 3.0),
+      radius: 0.0,
+      max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
+    };
+
+    let obstacle = Obstacle::Open {
+      vertices: vec![
+        Vec2::new(-1.0, 1.0),
+        Vec2::new(0.0, 2.0),
+        Vec2::new(1.0, 1.0),
+      ],
+    };
+
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [
+        Line {
+          direction: Vec2::new(-1.0, -1.0).normalize(),
+          point: Vec2::new(0.0, 2.0),
+        },
+        Line {
+          direction: Vec2::new(-1.0, 1.0).normalize(),
+          point: Vec2::new(0.0, 2.0),
+        },
+      ]
     );
   }
 }
