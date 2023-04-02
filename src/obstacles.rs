@@ -409,8 +409,10 @@ fn get_line_for_agent_to_edge(
   // In the original paper, the constraint is the tangent line of the velocity
   // obstacle at the closest point to the zero velocity. However, in the
   // implementation of RVO2, the tangent line is the one at the closest point to
-  // the agent's current velocity.
-  // TODO: Figure out if using the zero velocity makes things noticably worse.
+  // the agent's current velocity. After doing some testing, it seems using the
+  // zero velocity, the agent has trouble getting around corners (since the
+  // agent's position will then project to the corner much longer than if the
+  // velocity is used).
   let velocity = agent.velocity;
 
   // Compute the time along the cutoff edge where the velocity projects to.
