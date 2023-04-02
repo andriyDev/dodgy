@@ -13,5 +13,9 @@ repository = "https://github.com/andriyDev/dodgy"
 categories = ["game-development"]
 keywords = ["orca", "rvo", "collision", "avoidance", "navigation"]
 
+exclude = [
+  ".github/*",
+]
+
 [dependencies]
 glam = "0.23.0"
