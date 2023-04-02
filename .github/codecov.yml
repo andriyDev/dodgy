@@ -1,0 +1,12 @@
+coverage:
+  range: 90..100
+  round: down
+  precision: 1
+  status:
+    project:
+      default:
+        threshold: 1%
+
+comment:
+  layout: "files"
+  require_changes: true
