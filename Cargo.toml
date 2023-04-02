@@ -3,7 +3,15 @@ edition = "2021"
 name = "dodgy"
 version = "1.0.0"
 
+description = "An implementation of ORCA, a local collision avoidance algorithm."
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license-file = "LICENSE"
+readme = "README.md"
+repository = "https://github.com/andriyDev/dodgy"
+
+categories = ["game-development"]
+keywords = ["orca", "rvo", "collision", "avoidance", "navigation"]
 
 [dependencies]
 glam = "0.23.0"
