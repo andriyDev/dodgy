@@ -232,9 +232,14 @@ fn get_line_for_agent_to_edge(
   // used.
 
   if edge_t < 0.0 && dist_left_squared <= squared_radius {
-    // TODO: Figure out why not convex is skipped here.
+    // If the agent collides with the left vertex (past the edge), but the
+    // vertex is convex, that means that the agent is really colliding with the
+    // corner. If no constraint is generated here, the agent may try to stop
+    // penetrating the left edge by further penetrating this edge. Therefore, we
+    // generate a constraint parallel to the edge. This is intentionally
+    // different from the original RVO2 implementation.
     if !left_vertex.convex {
-      return None;
+      return Some(Line { point: Vec2::ZERO, direction: -edge_unit_vector });
     }
 
     return Some(Line {
@@ -242,9 +247,9 @@ fn get_line_for_agent_to_edge(
       direction: relative_left_vertex.perp().normalize(),
     });
   } else if edge_t > 1.0 && dist_right_squared <= squared_radius {
-    // TODO: Figure out why not convex is skipped here.
+    // See the left vertex handling for the reasoning.
     if !right_vertex.convex {
-      return None;
+      return Some(Line { point: Vec2::ZERO, direction: -edge_unit_vector });
     }
     // If the right edge goes to the right of the right vertex, this edge can be
     // filtered out, since the collision will be handled by the next edge. We
@@ -1227,6 +1232,47 @@ mod tests {
         direction: Vec2::new(-0.1, 0.5).normalize().perp(),
         point: Vec2::new(0.0, 0.0)
       }]
+    );
+  }
+
+  #[test]
+  fn collision_with_convex_vertex() {
+    let mut agent = Agent {
+      position: Vec2::new(0.1, -0.1),
+      velocity: Vec2::ZERO,
+      radius: 1.0,
+      max_velocity: 0.0,
+      avoidance_responsibility: 1.0,
+    };
+
+    let obstacle = Obstacle::Open {
+      vertices: vec![
+        Vec2::new(-2.0, -1.0),
+        Vec2::new(-1.0, 0.0),
+        Vec2::new(0.0, 0.0),
+        Vec2::new(1.0, -1.0),
+      ],
+    };
+
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [
+        Line { direction: Vec2::new(-1.0, 1.0).normalize(), point: Vec2::ZERO },
+        Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::ZERO },
+      ]
+    );
+
+    agent.position = Vec2::new(-1.1, -0.1);
+
+    assert_lines_eq_unordered!(
+      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      [
+        Line {
+          direction: Vec2::new(-1.0, -1.0).normalize(),
+          point: Vec2::ZERO
+        },
+        Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::ZERO },
+      ]
     );
   }
 }
