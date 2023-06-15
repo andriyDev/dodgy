@@ -24,6 +24,7 @@ use glam::Vec2;
 use crate::{common::determinant, Agent, Line};
 
 // A single obstacle in the simulation.
+#[derive(Clone, PartialEq, Debug)]
 pub enum Obstacle {
   // A closed obstacle. The obstacle is closed in that the last vertex will
   // have an edge connecting it to the first vertex. The edges cannot cross,
