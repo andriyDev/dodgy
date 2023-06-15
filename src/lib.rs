@@ -36,6 +36,7 @@ pub use simulator::{AgentParameters, Simulator};
 pub use visibility_set::VisibilitySet;
 
 // A single agent in the simulation.
+#[derive(Clone, PartialEq, Debug)]
 pub struct Agent {
   // The position of the agent.
   pub position: Vec2,
