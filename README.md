@@ -84,7 +84,12 @@ loop {
       preferred_velocity,
       time_horizon,
       obstacle_time_horizon,
-      delta_seconds);
+      delta_seconds,
+      &AvoidanceOptions {
+        obstacle_margin: 0.1,
+        time_horizon,
+        obstacle_time_horizon,
+      });
     new_velocities.push(avoidance_velocity);
   }
 
@@ -114,6 +119,7 @@ simulator.add_agent(Agent {
   max_velocity: 5.0,
 }, AgentParameters {
   goal_point: Vec2::new(50.0, 0.0),
+  obstacle_margin: 0.1,
   time_horizon: 3.0,
   obstacle_time_horizon: 1.0,
 });
