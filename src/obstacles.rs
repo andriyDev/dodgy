@@ -44,16 +44,23 @@ pub enum Obstacle {
 pub fn get_lines_for_agent_to_obstacle(
   agent: &Agent,
   obstacle: &Obstacle,
+  obstacle_margin: f32,
   time_horizon: f32,
 ) -> Vec<Line> {
   match obstacle {
-    Obstacle::Closed { vertices } => get_lines_for_agent_to_obstacle_const::<
-      true,
-    >(agent, vertices, time_horizon),
+    Obstacle::Closed { vertices } => {
+      get_lines_for_agent_to_obstacle_const::<true>(
+        agent,
+        vertices,
+        obstacle_margin,
+        time_horizon,
+      )
+    }
     Obstacle::Open { vertices } => {
       get_lines_for_agent_to_obstacle_const::<false>(
         agent,
         vertices,
+        obstacle_margin,
         time_horizon,
       )
     }
@@ -63,6 +70,7 @@ pub fn get_lines_for_agent_to_obstacle(
 fn get_lines_for_agent_to_obstacle_const<const CLOSED: bool>(
   agent: &Agent,
   vertices: &[Vec2],
+  obstacle_margin: f32,
   time_horizon: f32,
 ) -> Vec<Line> {
   let convexity = {
@@ -112,6 +120,7 @@ fn get_lines_for_agent_to_obstacle_const<const CLOSED: bool>(
         right_vertex,
         Some(vertices[left_left_index]),
         Some(vertices[right_right_index]),
+        obstacle_margin,
         time_horizon,
         &lines,
       ) {
@@ -135,6 +144,7 @@ fn get_lines_for_agent_to_obstacle_const<const CLOSED: bool>(
         } else {
           Some(vertices[right_index + 1])
         },
+        obstacle_margin,
         time_horizon,
         &lines,
       ) {
@@ -158,6 +168,7 @@ fn get_line_for_agent_to_edge(
   mut right_vertex: EdgeVertex,
   mut left_left_vertex: Option<Vec2>,
   mut right_right_vertex: Option<Vec2>,
+  edge_margin: f32,
   time_horizon: f32,
   existing_lines: &[Line],
 ) -> Option<Line> {
@@ -180,7 +191,7 @@ fn get_line_for_agent_to_edge(
     left_vertex: Vec2,
     right_vertex: Vec2,
     time_horizon: f32,
-    radius: f32,
+    edge_margin: f32,
     existing_lines: &[Line],
   ) -> bool {
     const EDGE_COVER_EPSILON: f32 = 1e-5;
@@ -190,9 +201,9 @@ fn get_line_for_agent_to_edge(
       // pre-existing line, this edge cannot be collided with already, so it is
       // covered.
       if determinant(left_vertex / time_horizon - line.point, line.direction)
-        >= radius / time_horizon - EDGE_COVER_EPSILON
+        >= edge_margin / time_horizon - EDGE_COVER_EPSILON
         && determinant(right_vertex / time_horizon - line.point, line.direction)
-          >= radius / time_horizon - EDGE_COVER_EPSILON
+          >= edge_margin / time_horizon - EDGE_COVER_EPSILON
       {
         return true;
       }
@@ -208,7 +219,7 @@ fn get_line_for_agent_to_edge(
     relative_left_vertex,
     relative_right_vertex,
     time_horizon,
-    agent.radius,
+    edge_margin,
     existing_lines,
   ) {
     return None;
@@ -218,7 +229,7 @@ fn get_line_for_agent_to_edge(
 
   let dist_left_squared = relative_left_vertex.length_squared();
   let dist_right_squared = relative_right_vertex.length_squared();
-  let squared_radius = agent.radius * agent.radius;
+  let squared_radius = edge_margin * edge_margin;
 
   // Compute the time along the edge that the agent's position projects to.
   let edge_t =
@@ -309,10 +320,10 @@ fn get_line_for_agent_to_edge(
     let tangent_triangle_leg = (dist_left_squared - squared_radius).sqrt();
 
     left_shadow_direction = (relative_left_vertex * tangent_triangle_leg
-      + relative_left_vertex.perp() * agent.radius)
+      + relative_left_vertex.perp() * edge_margin)
       / dist_left_squared;
     right_shadow_direction = (relative_left_vertex * tangent_triangle_leg
-      - relative_left_vertex.perp() * agent.radius)
+      - relative_left_vertex.perp() * edge_margin)
       / dist_left_squared;
   } else if edge_t > 1.0 && dist_to_edge_line_squared <= squared_radius {
     // The left vertex is covered by the shadow of the right, so the shadow is
@@ -330,10 +341,10 @@ fn get_line_for_agent_to_edge(
     // computed.
     let tangent_triangle_leg = (dist_right_squared - squared_radius).sqrt();
     left_shadow_direction = (relative_right_vertex * tangent_triangle_leg
-      + relative_right_vertex.perp() * agent.radius)
+      + relative_right_vertex.perp() * edge_margin)
       / dist_right_squared;
     right_shadow_direction = (relative_right_vertex * tangent_triangle_leg
-      - relative_right_vertex.perp() * agent.radius)
+      - relative_right_vertex.perp() * edge_margin)
       / dist_right_squared;
   } else {
     if left_vertex.convex {
@@ -344,7 +355,7 @@ fn get_line_for_agent_to_edge(
         (dist_left_squared - squared_radius).sqrt();
       left_shadow_direction = (relative_left_vertex
         * left_tangent_triangle_leg
-        + relative_left_vertex.perp() * agent.radius)
+        + relative_left_vertex.perp() * edge_margin)
         / dist_left_squared;
     } else {
       // The left of the shadow is covered by the edge leading out of the left
@@ -362,7 +373,7 @@ fn get_line_for_agent_to_edge(
         (dist_right_squared - squared_radius).sqrt();
       right_shadow_direction = (relative_right_vertex
         * right_tangent_triangle_leg
-        - relative_right_vertex.perp() * agent.radius)
+        - relative_right_vertex.perp() * edge_margin)
         / dist_right_squared;
     } else {
       right_shadow_direction = edge_unit_vector;
@@ -445,7 +456,7 @@ fn get_line_for_agent_to_edge(
     return Some(Line {
       direction: -velocity_from_left_cutoff.perp(),
       point: left_cutoff
-        + agent.radius / time_horizon * velocity_from_left_cutoff,
+        + edge_margin / time_horizon * velocity_from_left_cutoff,
     });
   }
 
@@ -456,7 +467,7 @@ fn get_line_for_agent_to_edge(
     return Some(Line {
       direction: -velocity_from_right_cutoff.perp(),
       point: right_cutoff
-        + agent.radius / time_horizon * velocity_from_right_cutoff,
+        + edge_margin / time_horizon * velocity_from_right_cutoff,
     });
   }
 
@@ -492,7 +503,7 @@ fn get_line_for_agent_to_edge(
     let line_direction = -cutoff_vector.normalize();
     Some(Line {
       direction: line_direction,
-      point: left_cutoff + agent.radius / time_horizon * line_direction.perp(),
+      point: left_cutoff + edge_margin / time_horizon * line_direction.perp(),
     })
   } else if left_shadow_distance_squared <= right_shadow_distance_squared {
     if is_left_shadow_covered {
@@ -501,7 +512,7 @@ fn get_line_for_agent_to_edge(
       Some(Line {
         direction: left_shadow_direction,
         point: left_cutoff
-          + agent.radius / time_horizon * left_shadow_direction.perp(),
+          + edge_margin / time_horizon * left_shadow_direction.perp(),
       })
     }
   } else {
@@ -511,7 +522,7 @@ fn get_line_for_agent_to_edge(
       Some(Line {
         direction: -right_shadow_direction,
         point: right_cutoff
-          - agent.radius / time_horizon * right_shadow_direction.perp(),
+          - edge_margin / time_horizon * right_shadow_direction.perp(),
       })
     }
   }
@@ -557,7 +568,8 @@ mod tests {
       EdgeVertex { point: Vec2::new(1.0, 0.0), convex: true },
       None,
       None,
-      0.5,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 0.5,
       &[Line { point: Vec2::new(-2.5, 1.5), direction: Vec2::new(-1.0, 1.0) }],
     );
 
@@ -569,7 +581,8 @@ mod tests {
       EdgeVertex { point: Vec2::new(1.0, 0.0), convex: true },
       None,
       None,
-      1.0,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 1.0,
       &[Line { point: Vec2::new(-3.0, 1.0), direction: Vec2::new(-1.0, 1.0) }],
     );
     assert!(line.is_none(), "Line should have been None due to an existing line covering the edge. Line was {:?}", line);
@@ -594,7 +607,8 @@ mod tests {
       EdgeVertex { point: vertices[1], convex: true },
       Some(vertices[2]),
       Some(vertices[2]),
-      1.0,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 1.0,
       &[],
     );
     assert_line_eq!(
@@ -622,7 +636,8 @@ mod tests {
       EdgeVertex { point: vertices[1], convex: true },
       Some(vertices[2]),
       Some(vertices[2]),
-      1.0,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 1.0,
       &[],
     );
     assert_line_eq!(
@@ -649,7 +664,8 @@ mod tests {
       EdgeVertex { point: vertices[1], convex: true },
       None,
       None,
-      1.0,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 1.0,
       &[],
     );
     assert_line_eq!(
@@ -677,7 +693,8 @@ mod tests {
       EdgeVertex { point: vertices[1], convex: true },
       Some(vertices[2]),
       Some(vertices[2]),
-      1.0,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 1.0,
       &[],
     );
     assert!(line.is_none(), "The right vertex should be handled by the next edge. The generated line was {:?}", line.unwrap());
@@ -688,7 +705,8 @@ mod tests {
       EdgeVertex { point: vertices[2], convex: true },
       Some(vertices[0]),
       Some(vertices[0]),
-      1.0,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 1.0,
       &[],
     );
     assert!(line.is_some(), "The right vertex should be handled by this edge.");
@@ -713,7 +731,8 @@ mod tests {
       EdgeVertex { point: vertices[1], convex: true },
       Some(vertices[2]),
       Some(vertices[2]),
-      0.5,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 0.5,
       &[],
     );
     assert_line_eq!(
@@ -741,7 +760,8 @@ mod tests {
       EdgeVertex { point: vertices[1], convex: true },
       Some(vertices[2]),
       Some(vertices[2]),
-      0.5,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 0.5,
       &[],
     );
     assert_line_eq!(
@@ -757,7 +777,8 @@ mod tests {
       EdgeVertex { point: vertices[1], convex: true },
       Some(vertices[2]),
       Some(vertices[2]),
-      0.5,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 0.5,
       &[],
     );
     assert_line_eq!(
@@ -789,7 +810,8 @@ mod tests {
       EdgeVertex { point: vertices[2], convex: true },
       Some(vertices[0]),
       Some(vertices[3]),
-      0.5,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 0.5,
       &[],
     );
     assert!(line.is_none(), "Left shadow was covered, so the left edge should have taken care of creating the line.");
@@ -800,7 +822,8 @@ mod tests {
       EdgeVertex { point: vertices[1], convex: true },
       None,
       Some(vertices[2]),
-      0.5,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 0.5,
       &[],
     );
     assert!(line.is_some(), "Left shadow was covered for the right edge, so this edge should create a line.");
@@ -813,7 +836,8 @@ mod tests {
       EdgeVertex { point: vertices[2], convex: true },
       Some(vertices[0]),
       Some(vertices[3]),
-      0.5,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 0.5,
       &[],
     );
     assert!(line.is_none(), "Right shadow was covered, so the right edge should have taken care of creating the line.");
@@ -824,7 +848,8 @@ mod tests {
       EdgeVertex { point: vertices[3], convex: true },
       Some(vertices[1]),
       None,
-      0.5,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 0.5,
       &[],
     );
     assert!(line.is_some(), "Right shadow was covered for the left edge, so this edge should create a line.");
@@ -848,7 +873,8 @@ mod tests {
       EdgeVertex { point: vertices[1], convex: true },
       None,
       None,
-      1.0,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 1.0,
       &[],
     );
     assert!(line.is_some(), "Forward edges should not be ignored.");
@@ -859,7 +885,8 @@ mod tests {
       EdgeVertex { point: vertices[0], convex: true },
       None,
       None,
-      1.0,
+      /* edge_margin= */ agent.radius,
+      /* time_horizoon= */ 1.0,
       &[],
     );
     assert!(
@@ -886,7 +913,8 @@ mod tests {
         EdgeVertex { point: Vec2::new(1.0, 2.0), convex: true },
         None,
         None,
-        1.0,
+        /* edge_margin= */ agent.radius,
+        /* time_horizoon= */ 1.0,
         &[],
       )
       .unwrap(),
@@ -905,7 +933,8 @@ mod tests {
         EdgeVertex { point: Vec2::new(1.0, 2.0), convex: true },
         None,
         None,
-        1.0,
+        /* edge_margin= */ agent.radius,
+        /* time_horizoon= */ 1.0,
         &[],
       )
       .unwrap(),
@@ -933,7 +962,8 @@ mod tests {
         EdgeVertex { point: Vec2::new(0.0, 2.0), convex: true },
         None,
         None,
-        1.0,
+        /* edge_margin= */ agent.radius,
+        /* time_horizoon= */ 1.0,
         &[],
       )
       .unwrap(),
@@ -959,7 +989,8 @@ mod tests {
         EdgeVertex { point: Vec2::new(0.0, 2.0f32.sqrt()), convex: true },
         None,
         None,
-        1.0,
+        /* edge_margin= */ agent.radius,
+        /* time_horizoon= */ 1.0,
         &[],
       )
       .unwrap(),
@@ -980,7 +1011,8 @@ mod tests {
         EdgeVertex { point: Vec2::new(1.0, 4.0), convex: true },
         None,
         None,
-        1.0,
+        /* edge_margin= */ agent.radius,
+        /* time_horizoon= */ 1.0,
         &[],
       )
       .unwrap(),
@@ -1042,7 +1074,12 @@ mod tests {
 
     // Velocity projects to one of the obstacle's edges.
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [Line {
         direction: Vec2::new(-2.0, -1.0).normalize(),
         point: Vec2::new(0.0, 2.0),
@@ -1053,7 +1090,12 @@ mod tests {
 
     // Velocity projects across looping vertices.
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [Line {
         direction: Vec2::new(-2.0, 1.0).normalize(),
         point: Vec2::new(-4.0, 4.0),
@@ -1064,7 +1106,12 @@ mod tests {
 
     // Velocity projects to obstacle's shadow.
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [Line {
         direction: Vec2::new(-1.0, -1.0).normalize(),
         point: Vec2::new(4.0, 4.0),
@@ -1092,7 +1139,12 @@ mod tests {
 
     // Velocity projects to one of the obstacle's edges.
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [Line {
         direction: Vec2::new(-2.0, -1.0).normalize(),
         point: Vec2::new(0.0, 2.0),
@@ -1103,7 +1155,12 @@ mod tests {
 
     // Velocity projects to another of the obstacle's edges.
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [Line {
         direction: Vec2::new(-2.0, 1.0).normalize(),
         point: Vec2::new(-4.0, 4.0),
@@ -1114,7 +1171,12 @@ mod tests {
 
     // Velocity projects to obstacle's shadow.
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [Line {
         direction: Vec2::new(-1.0, -1.0).normalize(),
         point: Vec2::new(4.0, 4.0),
@@ -1141,7 +1203,12 @@ mod tests {
     };
 
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [
         Line {
           direction: Vec2::new(-1.0, -1.0).normalize(),
@@ -1178,7 +1245,12 @@ mod tests {
 
     // The (0,2)-to-(0,4) edge does not generate a constraint.
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::new(-1.0, 1.0) }]
     );
 
@@ -1194,7 +1266,12 @@ mod tests {
 
     // The (0,4)-to-(0,2) edge does not generate a constraint.
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::new(-1.0, 1.0) }]
     );
   }
@@ -1221,7 +1298,12 @@ mod tests {
     // Neither of the first two edges will be back-face culled, so only the
     // right edge will generate the constraint.
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::new(0.0, 0.0) }]
     );
 
@@ -1230,7 +1312,12 @@ mod tests {
     // The right edge is back-face culled (so doesn't generate a constraint), so
     // only the left edge will generate the constraint.
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [Line {
         direction: Vec2::new(-0.1, 0.5).normalize().perp(),
         point: Vec2::new(0.0, 0.0)
@@ -1258,7 +1345,12 @@ mod tests {
     };
 
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [
         Line { direction: Vec2::new(-1.0, 1.0).normalize(), point: Vec2::ZERO },
         Line { direction: Vec2::new(-1.0, 0.0), point: Vec2::ZERO },
@@ -1268,7 +1360,12 @@ mod tests {
     agent.position = Vec2::new(-1.1, -0.1);
 
     assert_lines_eq_unordered!(
-      get_lines_for_agent_to_obstacle(&agent, &obstacle, 1.0),
+      get_lines_for_agent_to_obstacle(
+        &agent,
+        &obstacle,
+        /* obstacle_margin= */ agent.radius,
+        /* time_horizon= */ 1.0,
+      ),
       [
         Line {
           direction: Vec2::new(-1.0, -1.0).normalize(),

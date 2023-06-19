@@ -32,7 +32,7 @@ use obstacles::get_lines_for_agent_to_obstacle;
 
 pub use obstacles::Obstacle;
 
-pub use simulator::{AgentParameters, Simulator};
+pub use simulator::{AgentParameters, Simulator, SimulatorMargin};
 pub use visibility_set::VisibilitySet;
 
 // A single agent in the simulation.
@@ -61,16 +61,18 @@ impl Agent {
   // direction to its current goal/waypoint). This new velocity is intended to
   // avoid running into the agent's `neighbours`. This is not always possible,
   // but agents will attempt to resolve any collisions in a reasonable fashion.
-  // The `time_horizon` determines how long in the future should collisions be
-  // considered between agents. The `obstacle_time_horizon` determines how long
-  // in the future should collisions be considered for obstacles. The
-  // `time_step` helps determine the velocity in cases of existing collisions,
-  // and must be positive.
+  // `obstacle_margin` determines the distance that the agent should maintain
+  // from the obstacle. The `time_horizon` determines how long in the future
+  // should collisions be considered between agents. The
+  // `obstacle_time_horizon` determines how long in the future should
+  // collisions be considered for obstacles. The `time_step` helps determine
+  // the velocity in cases of existing collisions, and must be positive.
   pub fn compute_avoiding_velocity(
     &self,
     neighbours: &[&Agent],
     obstacles: &[&Obstacle],
     preferred_velocity: Vec2,
+    obstacle_margin: f32,
     time_horizon: f32,
     obstacle_time_horizon: f32,
     time_step: f32,
@@ -80,7 +82,12 @@ impl Agent {
     let lines = obstacles
       .iter()
       .flat_map(|o| {
-        get_lines_for_agent_to_obstacle(self, o, obstacle_time_horizon)
+        get_lines_for_agent_to_obstacle(
+          self,
+          o,
+          obstacle_margin,
+          obstacle_time_horizon,
+        )
       })
       .chain(neighbours.iter().map(|neighbour| {
         self.get_line_for_neighbour(neighbour, time_horizon, time_step)
