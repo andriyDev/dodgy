@@ -56,26 +56,34 @@ pub struct Agent {
   pub avoidance_responsibility: f32,
 }
 
+// Parameters for computing the avoidance vector.
+#[derive(Clone, PartialEq, Debug)]
+pub struct AvoidanceOptions {
+  // The distance that the agent must be from any obstacle. This is commonly
+  // the agent's radius to ensure the agent never intersects the obstacle (for
+  // example a wall). An alternative is to set this to a small value to treat
+  // obstacles as the edge of something (like a cliff).
+  pub obstacle_margin: f32,
+  // How long in the future should collisions be considered between agents.
+  pub time_horizon: f32,
+  // How long in the future should collisions be considered for obstacles.
+  pub obstacle_time_horizon: f32,
+}
+
 impl Agent {
   // Computes a velocity based off the agent's preferred velocity (usually the
   // direction to its current goal/waypoint). This new velocity is intended to
   // avoid running into the agent's `neighbours`. This is not always possible,
   // but agents will attempt to resolve any collisions in a reasonable fashion.
-  // `obstacle_margin` determines the distance that the agent should maintain
-  // from the obstacle. The `time_horizon` determines how long in the future
-  // should collisions be considered between agents. The
-  // `obstacle_time_horizon` determines how long in the future should
-  // collisions be considered for obstacles. The `time_step` helps determine
-  // the velocity in cases of existing collisions, and must be positive.
+  // The `time_step` helps determine the velocity in cases of existing
+  // collisions, and must be positive.
   pub fn compute_avoiding_velocity(
     &self,
     neighbours: &[&Agent],
     obstacles: &[&Obstacle],
     preferred_velocity: Vec2,
-    obstacle_margin: f32,
-    time_horizon: f32,
-    obstacle_time_horizon: f32,
     time_step: f32,
+    avoidance_options: &AvoidanceOptions,
   ) -> Vec2 {
     assert!(time_step > 0.0, "time_step must be positive, was {}", time_step);
 
@@ -85,12 +93,16 @@ impl Agent {
         get_lines_for_agent_to_obstacle(
           self,
           o,
-          obstacle_margin,
-          obstacle_time_horizon,
+          avoidance_options.obstacle_margin,
+          avoidance_options.obstacle_time_horizon,
         )
       })
       .chain(neighbours.iter().map(|neighbour| {
-        self.get_line_for_neighbour(neighbour, time_horizon, time_step)
+        self.get_line_for_neighbour(
+          neighbour,
+          avoidance_options.time_horizon,
+          time_step,
+        )
       }))
       .collect::<Vec<Line>>();
 
