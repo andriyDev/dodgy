@@ -12,8 +12,14 @@ pub struct Simulator {
 
 pub struct AgentParameters {
   pub goal_point: Vec2,
+  pub obstacle_margin: SimulatorMargin,
   pub time_horizon: f32,
   pub obstacle_time_horizon: f32,
+}
+
+pub enum SimulatorMargin {
+  AgentRadius,
+  Distance(f32),
 }
 
 impl Simulator {
@@ -114,6 +120,10 @@ impl Simulator {
         &neighbours,
         &near_obstacles,
         parameters.goal_point - agent.position,
+        match parameters.obstacle_margin {
+          SimulatorMargin::AgentRadius => agent.radius,
+          SimulatorMargin::Distance(v) => v,
+        },
         parameters.time_horizon,
         parameters.obstacle_time_horizon,
         time_step,
@@ -131,7 +141,7 @@ impl Simulator {
 mod tests {
   use glam::Vec2;
 
-  use crate::{Agent, AgentParameters, Obstacle, Simulator};
+  use crate::{Agent, AgentParameters, Obstacle, Simulator, SimulatorMargin};
 
   macro_rules! assert_vec_near {
     ($left: expr, $right: expr, $eps: expr) => {{
@@ -162,6 +172,7 @@ mod tests {
       },
       AgentParameters {
         goal_point: Vec2::new(-10.0, 0.0),
+        obstacle_margin: SimulatorMargin::AgentRadius,
         time_horizon: 2.0,
         obstacle_time_horizon: 1.0,
       },
@@ -177,6 +188,7 @@ mod tests {
       },
       AgentParameters {
         goal_point: Vec2::new(10.0, 0.0),
+        obstacle_margin: SimulatorMargin::AgentRadius,
         time_horizon: 2.0,
         obstacle_time_horizon: 1.0,
       },
