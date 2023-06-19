@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use glam::Vec2;
 
-use crate::{Agent, Obstacle};
+use crate::{Agent, AvoidanceOptions, Obstacle};
 
 pub struct Simulator {
   agents: Vec<Agent>,
@@ -120,13 +120,15 @@ impl Simulator {
         &neighbours,
         &near_obstacles,
         parameters.goal_point - agent.position,
-        match parameters.obstacle_margin {
-          SimulatorMargin::AgentRadius => agent.radius,
-          SimulatorMargin::Distance(v) => v,
-        },
-        parameters.time_horizon,
-        parameters.obstacle_time_horizon,
         time_step,
+        &AvoidanceOptions {
+          obstacle_margin: match parameters.obstacle_margin {
+            SimulatorMargin::AgentRadius => agent.radius,
+            SimulatorMargin::Distance(v) => v,
+          },
+          time_horizon: parameters.time_horizon,
+          obstacle_time_horizon: parameters.obstacle_time_horizon,
+        },
       ));
     }
 
