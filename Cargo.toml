@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "dodgy"
-version = "1.2.1"
+version = "1.2.2"
 
 description = "An implementation of ORCA, a local collision avoidance algorithm."
 
@@ -13,9 +13,7 @@ repository = "https://github.com/andriyDev/dodgy"
 categories = ["game-development"]
 keywords = ["orca", "rvo", "collision", "avoidance", "navigation"]
 
-exclude = [
-  ".github/*",
-]
+exclude = [".github/*"]
 
 [dependencies]
 glam = "0.24.0"
