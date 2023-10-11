@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 // The contents of this file were primarily ported from Agent.cc from RVO2 with
 // significant alterations. As per the Apache-2.0 license, the original
 // copyright notice has been included, excluding those notices that do not
@@ -18,7 +19,6 @@
 // United States of America
 //
 // <https://gamma.cs.unc.edu/RVO2/>
-
 mod common;
 mod linear_programming;
 mod obstacles;
