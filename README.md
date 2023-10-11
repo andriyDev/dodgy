@@ -25,7 +25,10 @@ commented, and the public API made more flexible.
 This example uses the "raw" API.
 
 ```rust
-let agents = vec![
+use dodgy::{Agent, AvoidanceOptions, Obstacle};
+use glam::Vec2;
+
+let mut agents = vec![
   Agent {
     position: Vec2::ZERO,
     velocity: Vec2::ZERO,
@@ -33,12 +36,12 @@ let agents = vec![
     avoidance_responsibility: 1.0,
     max_velocity: 5.0,
   },
-  ...
+  // Add more agents here.
 ];
 
 let goal_points = vec![
   Vec2::new(50.0, 0.0),
-  ...
+  // Add goal points for every agent.
 ];
 
 let obstacles = vec![
@@ -50,20 +53,25 @@ let obstacles = vec![
       Vec2::new(1000.0, -1000.0),
     ],
   },
-  ...
+  // Add more obstacles here.
 ];
 
 let time_horizon = 3.0;
 let obstacle_time_horizon = 1.0;
 
-loop {
-  let delta_seconds = ...;
+fn get_delta_seconds() -> f32 {
+  // Use something that actually gets the time between frames.
+  return 0.01;
+}
+
+for i in 0..100 {
+  let delta_seconds = get_delta_seconds();
   if delta_seconds == 0.0 {
     // Skip frames where agents can't move anyway.
     continue;
   }
 
-  let new_velocities = Vec::with_capacity(agents.len());
+  let mut new_velocities = Vec::with_capacity(agents.len());
 
   for i in 0..agents.len() {
     let neighbours = agents[..i]
@@ -78,12 +86,10 @@ loop {
     let preferred_velocity = (goal_points[i] - agents[i].position)
       .normalize_or_zero() * agents[i].max_velocity;
 
-    let avoidance_velocity = agents[i].compute_avoidance_velocity(
+    let avoidance_velocity = agents[i].compute_avoiding_velocity(
       &neighbours,
       &nearby_obstacles,
       preferred_velocity,
-      time_horizon,
-      obstacle_time_horizon,
       delta_seconds,
       &AvoidanceOptions {
         obstacle_margin: 0.1,
@@ -110,6 +116,9 @@ regular spatial queries, and exposes just the avoidance part.
 However, an alternative using the `Simulator` struct:
 
 ```rust
+use dodgy::{Agent, AvoidanceOptions, AgentParameters, Obstacle, Simulator};
+use glam::Vec2;
+
 let mut simulator = Simulator::new();
 simulator.add_agent(Agent {
   position: Vec2::ZERO,
@@ -119,11 +128,11 @@ simulator.add_agent(Agent {
   max_velocity: 5.0,
 }, AgentParameters {
   goal_point: Vec2::new(50.0, 0.0),
-  obstacle_margin: 0.1,
+  obstacle_margin: dodgy::SimulatorMargin::Distance(0.1),
   time_horizon: 3.0,
   obstacle_time_horizon: 1.0,
 });
-...
+// Add more agents.
 
 simulator.add_obstacle(
   Obstacle::Closed{
@@ -135,10 +144,15 @@ simulator.add_obstacle(
     ],
   }
 );
-...
+// Add more obstacles.
 
-loop {
-  let delta_seconds = ...;
+fn get_delta_seconds() -> f32 {
+  // Use something that actually gets the time between frames.
+  return 0.01;
+}
+
+for i in 0..100 {
+  let delta_seconds = get_delta_seconds();
   simulator.step(delta_seconds);
 
   // Update rendering using new agent positions (using simulator.get_agent).
