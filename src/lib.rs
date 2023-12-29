@@ -25,8 +25,9 @@ mod obstacles;
 mod simulator;
 mod visibility_set;
 
+pub use glam::Vec2;
+
 use common::*;
-use glam::Vec2;
 use linear_programming::{solve_linear_program, Line};
 use obstacles::get_lines_for_agent_to_obstacle;
 
