@@ -1,4 +1,4 @@
-# dodgy
+# dodgy_2d
 
 A Rust crate to compute local collision avoidance (specifically ORCA) for agents.
 
@@ -25,7 +25,7 @@ commented, and the public API made more flexible.
 This example uses the "raw" API.
 
 ```rust
-use dodgy::{Agent, AvoidanceOptions, Obstacle};
+use dodgy_2d::{Agent, AvoidanceOptions, Obstacle};
 use glam::Vec2;
 
 let mut agents = vec![
@@ -116,7 +116,7 @@ regular spatial queries, and exposes just the avoidance part.
 However, an alternative using the `Simulator` struct:
 
 ```rust
-use dodgy::{Agent, AvoidanceOptions, AgentParameters, Obstacle, Simulator};
+use dodgy_2d::{Agent, AvoidanceOptions, AgentParameters, Obstacle, Simulator};
 use glam::Vec2;
 
 let mut simulator = Simulator::new();
@@ -128,7 +128,7 @@ simulator.add_agent(Agent {
   max_velocity: 5.0,
 }, AgentParameters {
   goal_point: Vec2::new(50.0, 0.0),
-  obstacle_margin: dodgy::SimulatorMargin::Distance(0.1),
+  obstacle_margin: dodgy_2d::SimulatorMargin::Distance(0.1),
   time_horizon: 3.0,
   obstacle_time_horizon: 1.0,
 });
@@ -169,5 +169,5 @@ Licensed under the [MIT license](LICENSE).
 
 ## Attribution
 
-dodgy contains code ported from RVO2. See
+dodgy_2d contains code ported from RVO2. See
 [original_license.txt](original_license.txt).
