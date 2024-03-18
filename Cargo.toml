@@ -16,4 +16,4 @@ keywords = ["orca", "rvo", "collision", "avoidance", "navigation"]
 exclude = [".github/*"]
 
 [dependencies]
-glam = "0.25.0"
+glam = "0.26.0"
