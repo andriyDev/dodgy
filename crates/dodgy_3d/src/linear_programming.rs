@@ -299,6 +299,97 @@ fn solve_linear_program_3d(
   LinearProgram3DResult::Feasible(best_value)
 }
 
+// Solves the 4D linear program, after the 3D linear program was determined to
+// be infeasible. This effectively finds the first valid value when moving all
+// non-rigid half-spaces back at the same speed. `radius` limits the magnitude
+// of the resulting value. `index_of_failed_plane` and `partial_value` are the
+// results from the infeasible 3D program, where `partial_value` is assumed to
+// satisfy all `constraints[0..index_of_failed_plane]`.
+fn solve_linear_program_4d(
+  constraints: &[Plane],
+  radius: f32,
+  index_of_failed_plane: usize,
+  partial_value: Vec3,
+) -> Vec3 {
+  let mut penetration = 0.0;
+  let mut best_value = partial_value;
+
+  for (index, constraint) in
+    constraints[index_of_failed_plane..].iter().enumerate()
+  {
+    if -constraint.signed_distance_to_plane(best_value) <= penetration {
+      // `best_value` does not penetrate the constraint any more than other
+      // constraints, so move on (this constraint will still be considered for
+      // future constraints).
+      continue;
+    }
+
+    let index = index + index_of_failed_plane;
+
+    // The goal is to find the value that penetrates all constraints the least.
+    // While optimizing the value to penetrate `constraint` as little as
+    // possible (in the direction of the valid `constraint` half-plane), if the
+    // value is constrained such that all other constraints are not violated
+    // more than `constraint`, the resulting value will penetrate all
+    // constraints the least.
+
+    // Start a new problem to find the least penetrating value for `constraint`.
+    let mut penetration_constraints = Vec::with_capacity(index);
+    for previous_constraint in &constraints[0..index] {
+      // The new constraint for `previous_constraint` is the half-space such
+      // that `previous_constraint` is violated no more than `constraint`. This
+      // half-space is defined by the plane through the intersection of both
+      // constraint lines (where both constraints are 0), and in the direction
+      // of equal violation. This direction is therefore the difference between
+      // the normals of `previous_constraint` and `constraint`.
+
+      let cross = previous_constraint.normal.cross(constraint.normal);
+
+      let new_plane_point;
+      if cross.dot(cross) <= RVO_EPSILON {
+        // The constraint planes are parallel.
+
+        if constraint.normal.dot(previous_constraint.normal) > 0.0 {
+          // The constraint spaces point in the same direction, so optimizing
+          // `constraint` will also satisfy `previous_constraint` just as well.
+          continue;
+        }
+
+        // The constraint planes point in opposite directions, so the average of
+        // the two planes is where the constraints are violated the same amount.
+        new_plane_point = (constraint.point + previous_constraint.point) * 0.5;
+      } else {
+        let line_normal = cross.cross(constraint.normal);
+        new_plane_point = constraint.point
+          - previous_constraint.signed_distance_to_plane(constraint.point)
+            / line_normal.dot(previous_constraint.normal)
+            * line_normal;
+      }
+      penetration_constraints.push(Plane {
+        point: new_plane_point,
+        normal: (previous_constraint.normal - constraint.normal).normalize(),
+      });
+    }
+
+    // This should in principle never be infeasible. The optimal value is by
+    // definition already in the feasible region of the linear program. If
+    // it fails, it is due to small floating point errors, and the current
+    // `best_value` is kept.
+    if let LinearProgram3DResult::Feasible(result) = solve_linear_program_3d(
+      &penetration_constraints,
+      radius,
+      // The optimal value is the furthest value in the direction of the valid
+      // side of `constraint`'s half-space.
+      &OptimalValue::Direction(constraint.normal),
+    ) {
+      best_value = result;
+      penetration = -constraint.signed_distance_to_plane(best_value);
+    }
+  }
+
+  best_value
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -832,6 +923,45 @@ mod tests {
 
       assert_eq!(index_of_failed_line, 2);
       assert_vec3_near!(partial_value, Vec3::new(0.0, 0.1, 0.0));
+    }
+  }
+
+  mod solve_linear_program_4d_tests {
+    use glam::Vec3;
+
+    use super::{solve_linear_program_4d, Plane};
+
+    #[test]
+    fn finds_least_penetrating_value() {
+      let constraints = [
+        Plane {
+          point: Vec3::new(0.0, 1.0, 0.0),
+          normal: Vec3::new(0.0, 1.0, 0.0),
+        },
+        // Redundant constraint to first constraint.
+        Plane {
+          point: Vec3::new(0.0, 1.0, 0.0),
+          normal: Vec3::new(0.0, 1.0, 0.0),
+        },
+        Plane {
+          point: Vec3::new(1.0, 0.0, 0.0),
+          normal: Vec3::new(1.0, 0.0, 0.0),
+        },
+        Plane {
+          point: Vec3::new(-2.0, -2.0, 0.0),
+          normal: Vec3::new(-1.0, -1.0, 0.0).normalize(),
+        },
+      ];
+
+      assert_vec3_near!(
+        solve_linear_program_4d(
+          &constraints,
+          /* radius= */ 10.0,
+          /* index_of_failed_line= */ 3,
+          /* partial_value= */ Vec3::new(1.0, 1.0, 0.0)
+        ),
+        Vec3::new(-0.75736, -0.75736, 9.94248)
+      );
     }
   }
 }
