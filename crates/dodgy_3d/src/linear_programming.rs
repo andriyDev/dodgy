@@ -16,6 +16,34 @@ impl Plane {
   }
 }
 
+// Solves the linear program defined as finding the value closest to
+// `preferred_value` under the constraints that the value has a length less than
+// `radius`, and is outside all half-spaces defined by `constraints`. If
+// satisfying all constraints is infeasible, the constraints are relaxed and the
+// least-penetrating value is returned.
+pub fn solve_linear_program(
+  constraints: &[Plane],
+  radius: f32,
+  preferred_value: Vec3,
+) -> Vec3 {
+  match solve_linear_program_3d(
+    constraints,
+    radius,
+    &OptimalValue::Point(preferred_value),
+  ) {
+    LinearProgram3DResult::Feasible(optimal_value) => optimal_value,
+    LinearProgram3DResult::Infeasible {
+      index_of_failed_line,
+      partial_value,
+    } => solve_linear_program_4d(
+      constraints,
+      radius,
+      index_of_failed_line,
+      partial_value,
+    ),
+  }
+}
+
 #[derive(Clone, Debug)]
 struct Line {
   point: Vec3,
@@ -959,6 +987,71 @@ mod tests {
           /* radius= */ 10.0,
           /* index_of_failed_line= */ 3,
           /* partial_value= */ Vec3::new(1.0, 1.0, 0.0)
+        ),
+        Vec3::new(-0.75736, -0.75736, 9.94248)
+      );
+    }
+  }
+
+  mod solve_linear_program_tests {
+    use glam::Vec3;
+
+    use super::{solve_linear_program, Plane};
+
+    #[test]
+    fn finds_valid_value_when_feasible() {
+      let constraints = [
+        Plane {
+          point: Vec3::new(0.0, 1.0, 0.0),
+          normal: Vec3::new(0.0, 1.0, 0.0),
+        },
+        Plane {
+          point: Vec3::new(1.0, 0.0, 0.0),
+          normal: Vec3::new(1.0, 0.0, 0.0),
+        },
+        Plane {
+          point: Vec3::new(0.0, 0.0, 1.0),
+          normal: Vec3::new(0.0, 0.0, 1.0),
+        },
+      ];
+
+      assert_vec3_near!(
+        solve_linear_program(
+          &constraints,
+          /* radius= */ 10.0,
+          /* preferred_value= */ Vec3::ZERO,
+        ),
+        Vec3::new(1.0, 1.0, 1.0)
+      );
+    }
+
+    #[test]
+    fn finds_least_penetrating_value_when_infeasible() {
+      let constraints = [
+        Plane {
+          point: Vec3::new(0.0, 1.0, 0.0),
+          normal: Vec3::new(0.0, 1.0, 0.0),
+        },
+        // Redundant constraint to first constraint.
+        Plane {
+          point: Vec3::new(0.0, 1.0, 0.0),
+          normal: Vec3::new(0.0, 1.0, 0.0),
+        },
+        Plane {
+          point: Vec3::new(1.0, 0.0, 0.0),
+          normal: Vec3::new(1.0, 0.0, 0.0),
+        },
+        Plane {
+          point: Vec3::new(-2.0, -2.0, 0.0),
+          normal: Vec3::new(-1.0, -1.0, 0.0).normalize(),
+        },
+      ];
+
+      assert_vec3_near!(
+        solve_linear_program(
+          &constraints,
+          /* radius= */ 10.0,
+          /* preferred_value= */ Vec3::ZERO,
         ),
         Vec3::new(-0.75736, -0.75736, 9.94248)
       );
