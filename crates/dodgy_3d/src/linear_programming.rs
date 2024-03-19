@@ -235,6 +235,70 @@ fn solve_linear_program_along_plane(
   Ok(best_value)
 }
 
+// The result of the 3D linear program.
+#[derive(PartialEq, Debug)]
+enum LinearProgram3DResult {
+  // The linear program was feasible and holds the optimal value.
+  Feasible(Vec3),
+  // The linear program was infeasible.
+  Infeasible {
+    // The index of the line which caused the linear program to be invalid.
+    index_of_failed_line: usize,
+    // The value at the time that the linear program was determined to be
+    // invalid. The value is "partial" in the sense that it is partially
+    // constrained by the lines prior to `index_of_failed_line`.
+    partial_value: Vec3,
+  },
+}
+
+// Solves the 3D linear program, restricted to the sphere defined by `radius`,
+// and under `constraints`. The best value is defined by `optimal_value`.
+fn solve_linear_program_3d(
+  constraints: &[Plane],
+  radius: f32,
+  optimal_value: &OptimalValue,
+) -> LinearProgram3DResult {
+  let mut best_value = match optimal_value {
+    // If optimizing by a direction, the best value is just on the sphere in
+    // that direction.
+    &OptimalValue::Direction(direction) => direction * radius,
+    // If using a point and the point is outside the sphere, clamp it back to
+    // the sphere.
+    &OptimalValue::Point(point) if point.length_squared() > radius * radius => {
+      point.normalize() * radius
+    }
+    // If using a point and the point is inside the sphere, use it as is.
+    &OptimalValue::Point(point) => point,
+  };
+
+  for (index, constraint) in constraints.iter().enumerate() {
+    if constraint.signed_distance_to_plane(best_value) > 0.0 {
+      // If the current best value is already on the valid side of the
+      // half-plane defined by `constraint`, there is nothing to do.
+      continue;
+    }
+
+    // Since the current `best_value` violates `constraint`, the new best value
+    // must reside somewhere on the plane defined by `constraint`.
+    match solve_linear_program_along_plane(
+      constraint,
+      radius,
+      &constraints[0..index],
+      optimal_value,
+    ) {
+      Ok(new_value) => best_value = new_value,
+      Err(()) => {
+        return LinearProgram3DResult::Infeasible {
+          index_of_failed_line: index,
+          partial_value: best_value,
+        }
+      }
+    }
+  }
+
+  LinearProgram3DResult::Feasible(best_value)
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -643,6 +707,131 @@ mod tests {
         ),
         Err(())
       );
+    }
+  }
+
+  mod solve_linear_program_3d_tests {
+    use glam::Vec3;
+
+    use crate::linear_programming::{
+      solve_linear_program_3d, LinearProgram3DResult, OptimalValue, Plane,
+    };
+
+    fn unwrap_feasible(result: LinearProgram3DResult) -> Vec3 {
+      match result {
+        LinearProgram3DResult::Feasible(result) => result,
+        other => panic!("expected feasible, got {:?}", other),
+      }
+    }
+
+    fn unwrap_infeasible(result: LinearProgram3DResult) -> (usize, Vec3) {
+      match result {
+        LinearProgram3DResult::Infeasible {
+          index_of_failed_line,
+          partial_value,
+        } => (index_of_failed_line, partial_value),
+        other => panic!("expected infeasible, got {:?}", other),
+      }
+    }
+
+    #[test]
+    fn uses_projected_optimal_point() {
+      let one_over_root_2 = 1.0f32 / 2.0f32.sqrt();
+
+      assert_vec3_near!(
+        unwrap_feasible(solve_linear_program_3d(
+          Default::default(),
+          1.0,
+          &OptimalValue::Point(Vec3::new(0.5, 0.25, 0.0)),
+        )),
+        Vec3::new(0.5, 0.25, 0.0)
+      );
+
+      assert_vec3_near!(
+        unwrap_feasible(solve_linear_program_3d(
+          Default::default(),
+          1.0,
+          &OptimalValue::Point(Vec3::new(1.0, 1.0, 0.0)),
+        )),
+        Vec3::new(one_over_root_2, one_over_root_2, 0.0)
+      );
+    }
+
+    #[test]
+    fn uses_optimal_direction() {
+      let one_over_root_2 = 1.0f32 / 2.0f32.sqrt();
+
+      assert_vec3_near!(
+        unwrap_feasible(solve_linear_program_3d(
+          Default::default(),
+          3.0,
+          &OptimalValue::Direction(Vec3::new(
+            0.0,
+            one_over_root_2,
+            one_over_root_2
+          )),
+        )),
+        Vec3::new(0.0, one_over_root_2 * 3.0, one_over_root_2 * 3.0)
+      );
+
+      assert_vec3_near!(
+        unwrap_feasible(solve_linear_program_3d(
+          Default::default(),
+          5.0,
+          &OptimalValue::Direction(Vec3::new(
+            0.0,
+            one_over_root_2,
+            -one_over_root_2
+          )),
+        )),
+        Vec3::new(0.0, one_over_root_2 * 5.0, one_over_root_2 * -5.0)
+      );
+    }
+
+    #[test]
+    fn projects_to_constraint() {
+      let constraints = [Plane {
+        point: Vec3::new(0.5, 0.5, 0.5),
+        normal: Vec3::ONE.normalize(),
+      }];
+
+      assert_vec3_near!(
+        unwrap_feasible(solve_linear_program_3d(
+          &constraints,
+          1.0,
+          &OptimalValue::Point(Vec3::ZERO),
+        )),
+        Vec3::new(0.5, 0.5, 0.5)
+      );
+    }
+
+    #[test]
+    fn constraints_are_infeasible() {
+      let constraints = [
+        // This constraint is always satisfied.
+        Plane {
+          point: Vec3::new(0.5, 0.0, 0.0),
+          normal: Vec3::new(-1.0, 0.0, 0.0),
+        },
+        Plane {
+          point: Vec3::new(0.0, 0.1, 0.0),
+          normal: Vec3::new(0.0, 1.0, 0.0),
+        },
+        Plane {
+          point: Vec3::new(0.0, -0.1, 0.0),
+          normal: Vec3::new(0.0, -1.0, 0.0),
+        },
+      ];
+
+      let (index_of_failed_line, partial_value) =
+        unwrap_infeasible(solve_linear_program_3d(
+          &constraints,
+          1.0,
+          &OptimalValue::Point(Vec3::ZERO),
+        ));
+
+      assert_eq!(index_of_failed_line, 2);
+      assert_vec3_near!(partial_value, Vec3::new(0.0, 0.1, 0.0));
     }
   }
 }
