@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 
 use glam::Vec2;
 
@@ -112,7 +112,7 @@ impl Simulator {
           continue;
         }
 
-        neighbours.push(&self.agents[other_index]);
+        neighbours.push(Cow::Borrowed(&self.agents[other_index]));
       }
 
       let near_obstacles = Vec::new();

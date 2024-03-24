@@ -25,6 +25,8 @@ mod obstacles;
 mod simulator;
 mod visibility_set;
 
+use std::borrow::Cow;
+
 pub use glam::Vec2;
 
 use common::*;
@@ -79,8 +81,8 @@ impl Agent {
   // velocity in cases of existing collisions, and must be positive.
   pub fn compute_avoiding_velocity(
     &self,
-    neighbours: &[&Agent],
-    obstacles: &[&Obstacle],
+    neighbours: &[Cow<'_, Agent>],
+    obstacles: &[Cow<'_, Obstacle>],
     preferred_velocity: Vec2,
     max_speed: f32,
     time_step: f32,
