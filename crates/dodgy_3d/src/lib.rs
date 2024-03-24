@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 pub use glam::Vec3;
 
 use crate::linear_programming::{solve_linear_program, Plane};
