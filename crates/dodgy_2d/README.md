@@ -25,15 +25,17 @@ commented, and the public API made more flexible.
 This example uses the "raw" API.
 
 ```rust
+use std::borrow::Cow;
+
 use dodgy_2d::{Agent, AvoidanceOptions, Obstacle, Vec2};
 
-let mut agents = vec![
-  Agent {
+let mut agents: Vec<Cow<'static, Agent>> = vec![
+  Cow::Owned(Agent {
     position: Vec2::ZERO,
     velocity: Vec2::ZERO,
     radius: 1.0,
     avoidance_responsibility: 1.0,
-  },
+  }),
   // Add more agents here.
 ];
 
@@ -42,15 +44,15 @@ let goal_points = vec![
   // Add goal points for every agent.
 ];
 
-let obstacles = vec![
-  Obstacle::Closed{
+let obstacles: Vec<Cow<'static, Obstacle>> = vec![
+  Cow::Owned(Obstacle::Closed{
     vertices: vec![
       Vec2::new(-1000.0, -1000.0),
       Vec2::new(-1000.0, 1000.0),
       Vec2::new(1000.0, 1000.0),
       Vec2::new(1000.0, -1000.0),
     ],
-  },
+  }),
   // Add more obstacles here.
 ];
 
@@ -75,11 +77,12 @@ for i in 0..100 {
     let neighbours = agents[..i]
       .iter()
       .chain(agents[(i + 1)..].iter())
-      .collect::<Vec<&Agent>>();
+      .map(|agent| agent.clone())
+      .collect::<Vec<Cow<'_, Agent>>>();
     let nearby_obstacles = obstacles
       .iter()
-      .map(|obstacle| obstacle)
-      .collect::<Vec<&Obstacle>>();
+      .map(|obstacle| obstacle.clone())
+      .collect::<Vec<Cow<'_, Obstacle>>>();
 
     let agent_max_speed = 5.0;
     let preferred_velocity = (goal_points[i] - agents[i].position)
@@ -99,7 +102,7 @@ for i in 0..100 {
     new_velocities.push(avoidance_velocity);
   }
 
-  for (i, agent) in agents.iter_mut().enumerate() {
+  for (i, agent) in agents.iter_mut().map(Cow::to_mut).enumerate() {
     agent.velocity = new_velocities[i];
     agent.position += agent.velocity * delta_seconds;
   }
