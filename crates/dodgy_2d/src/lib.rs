@@ -235,9 +235,8 @@ impl Agent {
           relative_agent_velocity.project_onto_normalized(shadow_direction);
         // The velocity is inside the VO if it is to the left of the left
         // shadow, or the right of the right shadow.
-        inside_vo = determinant(relative_agent_velocity, shadow_direction)
-          * tangent_side
-          >= 0.0;
+        inside_vo =
+          determinant(relative_agent_velocity, shadow_direction) >= 0.0;
       }
     } else {
       // Collision. Project on cut-off circle at time `time_step`.
@@ -343,7 +342,7 @@ mod tests {
     fn velocity_projects_to_shadow() {
       let mut agent = Agent {
         position: Vec2::ZERO,
-        velocity: Vec2::new(-1.0, 3.0),
+        velocity: Vec2::new(1.0, 3.0),
         radius: 1.0,
         max_velocity: 0.0,
         avoidance_responsibility: 1.0,
@@ -362,7 +361,7 @@ mod tests {
       );
       assert_line_eq!(
         inside_shadow_line,
-        Line { point: Vec2::new(0.0, 3.0), direction: Vec2::new(0.0, 1.0) }
+        Line { point: Vec2::new(0.5, 3.0), direction: Vec2::new(0.0, 1.0) }
       );
 
       agent.velocity = Vec2::new(10.0, -1.0);
@@ -372,7 +371,7 @@ mod tests {
       );
       assert_line_eq!(
         outside_shadow_line,
-        Line { point: Vec2::new(10.0, -0.5), direction: Vec2::new(-1.0, 0.0) }
+        Line { point: Vec2::new(10.0, 0.0), direction: Vec2::new(-1.0, 0.0) }
       );
     }
 
