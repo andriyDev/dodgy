@@ -11,7 +11,7 @@ pub struct Plane {
 }
 
 impl Plane {
-  fn signed_distance_to_plane(&self, point: Vec3) -> f32 {
+  pub fn signed_distance_to_plane(&self, point: Vec3) -> f32 {
     (point - self.point).dot(self.normal)
   }
 }
