@@ -25,15 +25,17 @@ commented, and the public API made more flexible.
 This example uses the "raw" API.
 
 ```rust
+use std::borrow::Cow;
+
 use dodgy_3d::{Agent, AvoidanceOptions, Vec3};
 
-let mut agents = vec![
-  Agent {
+let mut agents: Vec<Cow<'static, Agent>> = vec![
+  Cow::Owned(Agent {
     position: Vec3::ZERO,
     velocity: Vec3::ZERO,
     radius: 1.0,
     avoidance_responsibility: 1.0,
-  },
+  }),
   // Add more agents here.
 ];
 
@@ -62,7 +64,8 @@ for i in 0..100 {
     let neighbours = agents[..i]
       .iter()
       .chain(agents[(i + 1)..].iter())
-      .collect::<Vec<&Agent>>();
+      .map(|agent| agent.clone())
+      .collect::<Vec<Cow<'_, Agent>>>();
 
     let agent_max_speed = 5.0;
     let preferred_velocity = (goal_points[i] - agents[i].position)
@@ -78,7 +81,7 @@ for i in 0..100 {
     new_velocities.push(avoidance_velocity);
   }
 
-  for (i, agent) in agents.iter_mut().enumerate() {
+  for (i, agent) in agents.iter_mut().map(Cow::to_mut).enumerate() {
     agent.velocity = new_velocities[i];
     agent.position += agent.velocity * delta_seconds;
   }
