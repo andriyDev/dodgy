@@ -3,6 +3,9 @@ pub use glam::Vec3;
 use crate::linear_programming::{solve_linear_program, Plane};
 
 mod linear_programming;
+mod simulator;
+
+pub use simulator::{AgentParameters, Simulator, SimulatorMargin};
 
 // A single agent in the simulation.
 #[derive(Clone, PartialEq, Debug)]
@@ -181,7 +184,7 @@ impl Agent {
         let t = (-b - (b * b - a * c).sqrt()) / a;
 
         vo_normal = (relative_agent_velocity + t * relative_neighbour_position)
-          .normalize();
+          .normalize_or_zero();
         let distance_to_plane = Plane { normal: vo_normal, point: Vec3::ZERO }
           .signed_distance_to_plane(relative_agent_velocity);
         inside_vo = distance_to_plane < 0.0;
