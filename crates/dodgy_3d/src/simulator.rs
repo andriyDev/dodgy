@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 
 use glam::Vec3;
 
@@ -89,7 +89,7 @@ impl Simulator {
           continue;
         }
 
-        neighbours.push(&self.agents[other_index]);
+        neighbours.push(Cow::Borrowed(&self.agents[other_index]));
       }
 
       new_velocities.push(agent.compute_avoiding_velocity(

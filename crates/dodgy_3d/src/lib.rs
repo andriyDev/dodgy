@@ -22,6 +22,8 @@
 mod linear_programming;
 mod simulator;
 
+use std::borrow::Cow;
+
 use crate::linear_programming::{solve_linear_program, Plane};
 
 pub use glam::Vec3;
@@ -63,7 +65,7 @@ impl Agent {
   // velocity in cases of existing collisions, and must be positive.
   pub fn compute_avoiding_velocity(
     &self,
-    neighbours: &[&Agent],
+    neighbours: &[Cow<'_, Agent>],
     preferred_velocity: Vec3,
     max_speed: f32,
     time_step: f32,
