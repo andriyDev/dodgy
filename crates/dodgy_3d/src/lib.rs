@@ -38,9 +38,6 @@ pub struct Agent {
   // The radius of the agent. Agents will use this to avoid bumping into each
   // other.
   pub radius: f32,
-  // The maximum velocity the agent is allowed to move at.
-  pub max_velocity: f32,
-
   // The amount of responsibility an agent has to avoid other agents. The
   // amount of avoidance between two agents is then dependent on the ratio of
   // the responsibility between the agents. Note this does not affect
@@ -60,12 +57,15 @@ impl Agent {
   // direction to its current goal/waypoint). This new velocity is intended to
   // avoid running into the agent's `neighbours`. This is not always possible,
   // but agents will attempt to resolve any collisions in a reasonable fashion.
-  // The `time_step` helps determine the velocity in cases of existing
-  // collisions, and must be positive.
+  // The `max_speed` is the maximum magnitude of the returned velocity. Even if
+  // the `preferred_velocity` is larger than `max_speed`, the resulting vector
+  // will be at most `max_speed` in length. The `time_step` helps determine the
+  // velocity in cases of existing collisions, and must be positive.
   pub fn compute_avoiding_velocity(
     &self,
     neighbours: &[&Agent],
     preferred_velocity: Vec3,
+    max_speed: f32,
     time_step: f32,
     avoidance_options: &AvoidanceOptions,
   ) -> Vec3 {
@@ -82,7 +82,7 @@ impl Agent {
       })
       .collect::<Vec<Plane>>();
 
-    solve_linear_program(&planes, self.max_velocity, preferred_velocity)
+    solve_linear_program(&planes, max_speed, preferred_velocity)
   }
 
   // Creates a plane to describe the half-space of valid velocities that should
@@ -284,7 +284,6 @@ mod tests {
         velocity: Vec3::ZERO,
         radius: radius - 1.0,
         avoidance_responsibility: 1.0,
-        max_velocity: 0.0,
       };
 
       let neighbour = Agent {
@@ -292,7 +291,6 @@ mod tests {
         velocity: Vec3::ZERO,
         radius: 1.0,
         avoidance_responsibility: 1.0,
-        max_velocity: 0.0,
       };
 
       let actual_plane = agent.get_plane_for_neighbour(
@@ -314,7 +312,6 @@ mod tests {
         position: Vec3::ZERO,
         velocity: Vec3::new(1.0, 3.0, 0.0),
         radius: 1.0,
-        max_velocity: 0.0,
         avoidance_responsibility: 1.0,
       };
 
@@ -322,7 +319,6 @@ mod tests {
         position: Vec3::new(2.0, 2.0, 0.0),
         velocity: Vec3::ZERO,
         radius: 1.0,
-        max_velocity: 0.0,
         avoidance_responsibility: 1.0,
       };
 
@@ -357,7 +353,6 @@ mod tests {
         position: Vec3::ZERO,
         velocity: Vec3::ZERO,
         radius: 2.0,
-        max_velocity: 0.0,
         avoidance_responsibility: 1.0,
       };
 
@@ -365,7 +360,6 @@ mod tests {
         position: Vec3::new(2.0, 2.0, 0.0),
         velocity: Vec3::ZERO,
         radius: 2.0,
-        max_velocity: 0.0,
         avoidance_responsibility: 1.0,
       };
 
@@ -389,7 +383,6 @@ mod tests {
         position: Vec3::ZERO,
         velocity: Vec3::ZERO,
         radius: 1.0,
-        max_velocity: 0.0,
         avoidance_responsibility: 1.0,
       };
 
@@ -397,7 +390,6 @@ mod tests {
         position: Vec3::new(2.0, 2.0, 0.0),
         velocity: Vec3::ZERO,
         radius: 1.0,
-        max_velocity: 0.0,
         avoidance_responsibility: 1.0,
       };
 
@@ -421,7 +413,6 @@ mod tests {
         velocity: Vec3::new(1.5, 0.0, 0.0),
         radius: 1.0,
         avoidance_responsibility: 1.0,
-        max_velocity: 0.0,
       };
 
       let neighbour = Agent {
@@ -429,7 +420,6 @@ mod tests {
         velocity: Vec3::ZERO,
         radius: 1.0,
         avoidance_responsibility: 3.0,
-        max_velocity: 0.0,
       };
 
       let actual_plane = agent.get_plane_for_neighbour(
@@ -451,7 +441,6 @@ mod tests {
         velocity: Vec3::new(0.5, 0.0, 0.0),
         radius: 1.0,
         avoidance_responsibility: 1.0,
-        max_velocity: 0.0,
       };
 
       let neighbour = Agent {
@@ -459,7 +448,6 @@ mod tests {
         velocity: Vec3::ZERO,
         radius: 1.0,
         avoidance_responsibility: 3.0,
-        max_velocity: 0.0,
       };
 
       let actual_plane = agent.get_plane_for_neighbour(
