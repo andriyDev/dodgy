@@ -11,6 +11,7 @@ pub struct Simulator {
 
 pub struct AgentParameters {
   pub goal_point: Vec3,
+  pub max_speed: f32,
   pub obstacle_margin: SimulatorMargin,
   pub time_horizon: f32,
   pub obstacle_time_horizon: f32,
@@ -81,7 +82,7 @@ impl Simulator {
         }
 
         let query_distance =
-          agent.max_velocity * parameters.time_horizon + agent.radius * 2.0;
+          parameters.max_speed * parameters.time_horizon + agent.radius * 2.0;
         if agent_pair_to_distance_squared[&(index, other_index)]
           <= query_distance * query_distance
         {
@@ -94,6 +95,7 @@ impl Simulator {
       new_velocities.push(agent.compute_avoiding_velocity(
         &neighbours,
         parameters.goal_point - agent.position,
+        parameters.max_speed,
         time_step,
         &AvoidanceOptions { time_horizon: parameters.time_horizon },
       ));
@@ -140,11 +142,11 @@ mod tests {
         position: Vec3::new(10.0, 0.0, 0.01),
         velocity: Vec3::ZERO,
         radius: 1.0,
-        max_velocity: 2.0,
         avoidance_responsibility: 1.0,
       },
       AgentParameters {
         goal_point: Vec3::new(-10.0, 0.0, 0.0),
+        max_speed: 2.0,
         obstacle_margin: SimulatorMargin::AgentRadius,
         time_horizon: 2.0,
         obstacle_time_horizon: 1.0,
@@ -156,11 +158,11 @@ mod tests {
         position: Vec3::new(-10.0, 0.0, 0.0),
         velocity: Vec3::ZERO,
         radius: 1.0,
-        max_velocity: 2.0,
         avoidance_responsibility: 1.0,
       },
       AgentParameters {
         goal_point: Vec3::new(10.0, 0.0, 0.0),
+        max_speed: 2.0,
         obstacle_margin: SimulatorMargin::AgentRadius,
         time_horizon: 2.0,
         obstacle_time_horizon: 1.0,

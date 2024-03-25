@@ -33,7 +33,6 @@ let mut agents = vec![
     velocity: Vec2::ZERO,
     radius: 1.0,
     avoidance_responsibility: 1.0,
-    max_velocity: 5.0,
   },
   // Add more agents here.
 ];
@@ -82,13 +81,15 @@ for i in 0..100 {
       .map(|obstacle| obstacle)
       .collect::<Vec<&Obstacle>>();
 
+    let agent_max_speed = 5.0;
     let preferred_velocity = (goal_points[i] - agents[i].position)
-      .normalize_or_zero() * agents[i].max_velocity;
+      .normalize_or_zero() * agent_max_speed;
 
     let avoidance_velocity = agents[i].compute_avoiding_velocity(
       &neighbours,
       &nearby_obstacles,
       preferred_velocity,
+      agent_max_speed,
       delta_seconds,
       &AvoidanceOptions {
         obstacle_margin: 0.1,
@@ -125,9 +126,9 @@ simulator.add_agent(Agent {
   velocity: Vec2::ZERO,
   radius: 1.0,
   avoidance_responsibility: 1.0,
-  max_velocity: 5.0,
 }, AgentParameters {
   goal_point: Vec2::new(50.0, 0.0),
+  max_speed: 5.0,
   obstacle_margin: dodgy_2d::SimulatorMargin::Distance(0.1),
   time_horizon: 3.0,
   obstacle_time_horizon: 1.0,

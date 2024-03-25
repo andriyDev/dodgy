@@ -558,7 +558,6 @@ mod tests {
       position: Vec2::new(0.0, -1.0),
       velocity: Vec2::new(0.0, 0.0),
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -594,7 +593,6 @@ mod tests {
       position: Vec2::new(0.0, -0.1),
       velocity: Vec2::new(0.0, -1.0),
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -623,7 +621,6 @@ mod tests {
       position: Vec2::new(-1.1, -0.1),
       velocity: Vec2::new(0.0, -1.0),
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -652,7 +649,6 @@ mod tests {
       position: Vec2::new(1.1, -0.1),
       velocity: Vec2::new(0.0, -1.0),
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -680,7 +676,6 @@ mod tests {
       position: Vec2::new(1.1, -0.1),
       velocity: Vec2::new(0.0, -1.0),
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -718,7 +713,6 @@ mod tests {
       position: Vec2::new(0.0, -2.0),
       velocity: Vec2::new(0.5, -1.0),
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -747,7 +741,6 @@ mod tests {
       position: Vec2::new(0.0, -2.0),
       velocity: Vec2::new(3.0, 3.0),
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -793,7 +786,6 @@ mod tests {
       position: Vec2::new(0.0, -2.0),
       velocity: Vec2::new(-10.0, 0.0),
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -861,7 +853,6 @@ mod tests {
       position: Vec2::new(0.0, 0.0),
       velocity: Vec2::new(0.0, 0.0),
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -902,7 +893,6 @@ mod tests {
       position: Vec2::ZERO,
       velocity: Vec2::new(3.0, 0.0),
       radius: 0.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -951,7 +941,6 @@ mod tests {
       position: Vec2::ZERO,
       velocity: Vec2::ZERO,
       radius: 0.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -977,7 +966,6 @@ mod tests {
       position: Vec2::ZERO,
       velocity: Vec2::new(-0.5, 3.0),
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -1060,7 +1048,6 @@ mod tests {
       position: Vec2::ZERO,
       velocity: Vec2::new(0.5, 3.0),
       radius: 0.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -1125,7 +1112,6 @@ mod tests {
       position: Vec2::ZERO,
       velocity: Vec2::new(0.5, 3.0),
       radius: 0.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -1190,7 +1176,6 @@ mod tests {
       position: Vec2::ZERO,
       velocity: Vec2::new(0.0, 3.0),
       radius: 0.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -1228,7 +1213,6 @@ mod tests {
       position: Vec2::ZERO,
       velocity: Vec2::ZERO,
       radius: 0.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -1282,7 +1266,6 @@ mod tests {
       position: Vec2::new(0.0, -0.5),
       velocity: Vec2::ZERO,
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
@@ -1331,7 +1314,6 @@ mod tests {
       position: Vec2::new(0.1, -0.1),
       velocity: Vec2::ZERO,
       radius: 1.0,
-      max_velocity: 0.0,
       avoidance_responsibility: 1.0,
     };
 
