@@ -1,4 +1,4 @@
-# dodgy
+# dodgy_2d
 
 A Rust crate to compute local collision avoidance (specifically ORCA) for agents.
 
@@ -25,8 +25,7 @@ commented, and the public API made more flexible.
 This example uses the "raw" API.
 
 ```rust
-use dodgy::{Agent, AvoidanceOptions, Obstacle};
-use glam::Vec2;
+use dodgy_2d::{Agent, AvoidanceOptions, Obstacle, Vec2};
 
 let mut agents = vec![
   Agent {
@@ -34,7 +33,6 @@ let mut agents = vec![
     velocity: Vec2::ZERO,
     radius: 1.0,
     avoidance_responsibility: 1.0,
-    max_velocity: 5.0,
   },
   // Add more agents here.
 ];
@@ -83,13 +81,15 @@ for i in 0..100 {
       .map(|obstacle| obstacle)
       .collect::<Vec<&Obstacle>>();
 
+    let agent_max_speed = 5.0;
     let preferred_velocity = (goal_points[i] - agents[i].position)
-      .normalize_or_zero() * agents[i].max_velocity;
+      .normalize_or_zero() * agent_max_speed;
 
     let avoidance_velocity = agents[i].compute_avoiding_velocity(
       &neighbours,
       &nearby_obstacles,
       preferred_velocity,
+      agent_max_speed,
       delta_seconds,
       &AvoidanceOptions {
         obstacle_margin: 0.1,
@@ -110,14 +110,15 @@ for i in 0..100 {
 
 This is the preferred API to use, since finding neighbours is essentially just a
 spatial query. Often, finding related objects within some radius is performed
-anyway in most game engines. Using this API, neighbours can be find through your
-regular spatial queries, and exposes just the avoidance part.
+anyway in most game engines. Using this API, neighbours can be found through
+your regular spatial queries, and exposes just the avoidance part.
 
 However, an alternative using the `Simulator` struct:
 
 ```rust
-use dodgy::{Agent, AvoidanceOptions, AgentParameters, Obstacle, Simulator};
-use glam::Vec2;
+use dodgy_2d::{
+  Agent, AvoidanceOptions, AgentParameters, Obstacle, Simulator, Vec2
+};
 
 let mut simulator = Simulator::new();
 simulator.add_agent(Agent {
@@ -125,10 +126,10 @@ simulator.add_agent(Agent {
   velocity: Vec2::ZERO,
   radius: 1.0,
   avoidance_responsibility: 1.0,
-  max_velocity: 5.0,
 }, AgentParameters {
   goal_point: Vec2::new(50.0, 0.0),
-  obstacle_margin: dodgy::SimulatorMargin::Distance(0.1),
+  max_speed: 5.0,
+  obstacle_margin: dodgy_2d::SimulatorMargin::Distance(0.1),
   time_horizon: 3.0,
   obstacle_time_horizon: 1.0,
 });
@@ -169,5 +170,5 @@ Licensed under the [MIT license](LICENSE).
 
 ## Attribution
 
-dodgy contains code ported from RVO2. See
+dodgy_2d contains code ported from RVO2. See
 [original_license.txt](original_license.txt).
