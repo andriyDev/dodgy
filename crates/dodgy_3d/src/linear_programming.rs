@@ -20,13 +20,13 @@
 // <https://gamma.cs.unc.edu/RVO2/>
 use glam::Vec3;
 
-// A half-space to act as a constraint on the linear program. This is
-// represented as a point and a normal, where the valid half-space resides in
-// the direction of the normal.
+/// A half-space to act as a constraint on the linear program. This is
+/// represented as a point and a normal, where the valid half-space resides in
+/// the direction of the normal.
 #[derive(Clone, Debug)]
 pub struct Plane {
   pub point: Vec3,
-  // Must always have length = 1
+  /// Must always have length = 1
   pub normal: Vec3,
 }
 
@@ -36,11 +36,11 @@ impl Plane {
   }
 }
 
-// Solves the linear program defined as finding the value closest to
-// `preferred_value` under the constraints that the value has a length less than
-// `radius`, and is outside all half-spaces defined by `constraints`. If
-// satisfying all constraints is infeasible, the constraints are relaxed and the
-// least-penetrating value is returned.
+/// Solves the linear program defined as finding the value closest to
+/// `preferred_value` under the constraints that the value has a length less
+/// than `radius`, and is outside all half-spaces defined by `constraints`. If
+/// satisfying all constraints is infeasible, the constraints are relaxed and
+/// the least-penetrating value is returned.
 pub fn solve_linear_program(
   constraints: &[Plane],
   radius: f32,
@@ -67,25 +67,25 @@ pub fn solve_linear_program(
 #[derive(Clone, Debug)]
 struct Line {
   point: Vec3,
-  // Must always have length = 1
+  /// Must always have length = 1
   direction: Vec3,
 }
 
 const RVO_EPSILON: f32 = 0.00001;
 
-// The definition of the optimal value ignoring all constraints.
+/// The definition of the optimal value ignoring all constraints.
 enum OptimalValue {
-  // The best value of the linear program should be the one nearest to this
-  // point (that satisfies the constraints).
+  /// The best value of the linear program should be the one nearest to this
+  /// point (that satisfies the constraints).
   Point(Vec3),
-  // The best value of the linear program should be the one furthest in this
-  // direction (that satisfies the constraints). This must be a unit vector.
+  /// The best value of the linear program should be the one furthest in this
+  /// direction (that satisfies the constraints). This must be a unit vector.
   Direction(Vec3),
 }
 
-// Solves the linear program restricted to `line`, and within the sphere defined
-// by `radius`. In addition, all `constraints` are used to further restrict the
-// resulting value. The best value is defined by `optimal_value`.
+/// Solves the linear program restricted to `line`, and within the sphere
+/// defined by `radius`. In addition, all `constraints` are used to further
+/// restrict the resulting value. The best value is defined by `optimal_value`.
 fn solve_linear_program_along_line(
   line: &Line,
   radius: f32,
@@ -183,9 +183,9 @@ fn solve_linear_program_along_line(
   Ok(line.point + t * line.direction)
 }
 
-// Solves the linear program restricted to `plane`, and within the sphere
-// defined by `radius`. In addition, all `constraints` are used to further
-// restrict the resulting value. The best value is defined by `optimal_value`.
+/// Solves the linear program restricted to `plane`, and within the sphere
+/// defined by `radius`. In addition, all `constraints` are used to further
+/// restrict the resulting value. The best value is defined by `optimal_value`.
 fn solve_linear_program_along_plane(
   plane: &Plane,
   radius: f32,
@@ -283,24 +283,24 @@ fn solve_linear_program_along_plane(
   Ok(best_value)
 }
 
-// The result of the 3D linear program.
+/// The result of the 3D linear program.
 #[derive(PartialEq, Debug)]
 enum LinearProgram3DResult {
-  // The linear program was feasible and holds the optimal value.
+  /// The linear program was feasible and holds the optimal value.
   Feasible(Vec3),
-  // The linear program was infeasible.
+  /// The linear program was infeasible.
   Infeasible {
-    // The index of the line which caused the linear program to be invalid.
+    /// The index of the line which caused the linear program to be invalid.
     index_of_failed_line: usize,
-    // The value at the time that the linear program was determined to be
-    // invalid. The value is "partial" in the sense that it is partially
-    // constrained by the lines prior to `index_of_failed_line`.
+    /// The value at the time that the linear program was determined to be
+    /// invalid. The value is "partial" in the sense that it is partially
+    /// constrained by the lines prior to `index_of_failed_line`.
     partial_value: Vec3,
   },
 }
 
-// Solves the 3D linear program, restricted to the sphere defined by `radius`,
-// and under `constraints`. The best value is defined by `optimal_value`.
+/// Solves the 3D linear program, restricted to the sphere defined by `radius`,
+/// and under `constraints`. The best value is defined by `optimal_value`.
 fn solve_linear_program_3d(
   constraints: &[Plane],
   radius: f32,
@@ -347,12 +347,12 @@ fn solve_linear_program_3d(
   LinearProgram3DResult::Feasible(best_value)
 }
 
-// Solves the 4D linear program, after the 3D linear program was determined to
-// be infeasible. This effectively finds the first valid value when moving all
-// non-rigid half-spaces back at the same speed. `radius` limits the magnitude
-// of the resulting value. `index_of_failed_plane` and `partial_value` are the
-// results from the infeasible 3D program, where `partial_value` is assumed to
-// satisfy all `constraints[0..index_of_failed_plane]`.
+/// Solves the 4D linear program, after the 3D linear program was determined to
+/// be infeasible. This effectively finds the first valid value when moving all
+/// non-rigid half-spaces back at the same speed. `radius` limits the magnitude
+/// of the resulting value. `index_of_failed_plane` and `partial_value` are the
+/// results from the infeasible 3D program, where `partial_value` is assumed to
+/// satisfy all `constraints[0..index_of_failed_plane]`.
 fn solve_linear_program_4d(
   constraints: &[Plane],
   radius: f32,

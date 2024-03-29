@@ -1,15 +1,15 @@
 use glam::Vec2;
 
-// Computes the 2D determinant of `a` and `b`, aka the 2D cross product.
+/// Computes the 2D determinant of `a` and `b`, aka the 2D cross product.
 pub fn determinant(a: Vec2, b: Vec2) -> f32 {
   a.x * b.y - a.y * b.x
 }
 
-// Computes the "time" along both lines when the lines intersect. If the lines
-// are parallel, the result is None. The lines are not line segments; the time
-// is allowed to be any number, even negative or greater than one. The resulting
-// Vec2 contains the time for line 1 in the x component, and the time for line 2
-// in the y component.
+/// Computes the "time" along both lines when the lines intersect. If the lines
+/// are parallel, the result is None. The lines are not line segments; the time
+/// is allowed to be any number, even negative or greater than one. The
+/// resulting Vec2 contains the time for line 1 in the x component, and the time
+/// for line 2 in the y component.
 pub fn time_to_intersect_lines(
   line_1_start: Vec2,
   line_1_end: Vec2,
