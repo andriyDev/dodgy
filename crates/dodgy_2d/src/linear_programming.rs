@@ -22,24 +22,24 @@
 use crate::determinant;
 use glam::Vec2;
 
-// A half-plane to act as a constraint on the linear program. This is
-// represented as a point and a direction, where the valid half-plane resides on
-// the counter-clockwise side of `direction` and `point`.
+/// A half-plane to act as a constraint on the linear program. This is
+/// represented as a point and a direction, where the valid half-plane resides
+/// on the counter-clockwise side of `direction` and `point`.
 #[derive(Clone, Debug)]
 pub struct Line {
   pub point: Vec2,
-  // Must always have length = 1
+  /// Must always have length = 1
   pub direction: Vec2,
 }
 
-// Solves the linear program defined as finding the value closest to
-// `preferred_value` under the constraints that the value has a length less than
-// `radius`, and is outside all half-planes defined by `constraints`. If
-// satisfying all constraints is infeasible, the non-rigid constraints (i.e.
-// `constraints[rigid_constraint_count..]`) are relaxed and the
-// least-penetrating value is returned. Note this means that
-// `constraints[0..rigid_constraint_count]` must be feasible, else the results
-// are undefined.
+/// Solves the linear program defined as finding the value closest to
+/// `preferred_value` under the constraints that the value has a length less
+/// than `radius`, and is outside all half-planes defined by `constraints`. If
+/// satisfying all constraints is infeasible, the non-rigid constraints (i.e.
+/// `constraints[rigid_constraint_count..]`) are relaxed and the
+/// least-penetrating value is returned. Note this means that
+/// `constraints[0..rigid_constraint_count]` must be feasible, else the results
+/// are undefined.
 pub fn solve_linear_program(
   constraints: &[Line],
   rigid_constraint_count: usize,
@@ -67,19 +67,19 @@ pub fn solve_linear_program(
 
 const RVO_EPSILON: f32 = 0.00001;
 
-// The definition of the optimal value ignoring all constraints.
+/// The definition of the optimal value ignoring all constraints.
 enum OptimalValue {
-  // The best value of the linear program should be the one nearest to this
-  // point (that satisfies the constraints).
+  /// The best value of the linear program should be the one nearest to this
+  /// point (that satisfies the constraints).
   Point(Vec2),
-  // The best value of the linear program should be the one furthest in this
-  // direction (that satisfies the constraints). This must be a unit vector.
+  /// The best value of the linear program should be the one furthest in this
+  /// direction (that satisfies the constraints). This must be a unit vector.
   Direction(Vec2),
 }
 
-// Solves the linear program restricted to `line`, and within the circle defined
-// by `radius`. In addition, all `constraints` are used to further restrict the
-// resulting value. The best value is defined by `optimal_value`.
+/// Solves the linear program restricted to `line`, and within the circle
+/// defined by `radius`. In addition, all `constraints` are used to further
+/// restrict the resulting value. The best value is defined by `optimal_value`.
 fn solve_linear_program_along_line(
   line: &Line,
   radius: f32,
@@ -179,24 +179,24 @@ fn solve_linear_program_along_line(
   Ok(line.point + t * line.direction)
 }
 
-// The result of the 2D linear program.
+/// The result of the 2D linear program.
 #[derive(PartialEq, Debug)]
 enum LinearProgram2DResult {
-  // The linear program was feasible and holds the optimal value.
+  /// The linear program was feasible and holds the optimal value.
   Feasible(Vec2),
-  // The linear program was infeasible.
+  /// The linear program was infeasible.
   Infeasible {
-    // The index of the line which caused the linear program to be invalid.
+    /// The index of the line which caused the linear program to be invalid.
     index_of_failed_line: usize,
-    // The value at the time that the linear program was determined to be
-    // invalid. The value is "partial" in the sense that it is partially
-    // constrained by the lines prior to `index_of_failed_line`.
+    /// The value at the time that the linear program was determined to be
+    /// invalid. The value is "partial" in the sense that it is partially
+    /// constrained by the lines prior to `index_of_failed_line`.
     partial_value: Vec2,
   },
 }
 
-// Solves the 2D linear program, restricted to the circle defined by `radius`,
-// and under `constraints`. The best value is defined by `optimal_value`.
+/// Solves the 2D linear program, restricted to the circle defined by `radius`,
+/// and under `constraints`. The best value is defined by `optimal_value`.
 fn solve_linear_program_2d(
   constraints: &[Line],
   radius: f32,
@@ -243,15 +243,15 @@ fn solve_linear_program_2d(
   LinearProgram2DResult::Feasible(best_value)
 }
 
-// Solves the 3D linear program, after the 2D linear program was determined to
-// be infeasible. This effectively finds the first valid value when moving all
-// non-rigid half-planes back at the same speed. `radius` limits the magnitude
-// of the resulting value. `rigid_constraint_count` determines the constraints
-// that will not be moved. These are assumed to be trivially satisfiable (in
-// practice these correspond to obstacles in RVO, which can be satisfied by a
-// velocity of 0). `index_of_failed_line` and `partial_value` are the results
-// from the infeasible 2D program, where `partial_value` is assumed to satisfy
-// all `constraints[0..index_of_failed_line]`.
+/// Solves the 3D linear program, after the 2D linear program was determined to
+/// be infeasible. This effectively finds the first valid value when moving all
+/// non-rigid half-planes back at the same speed. `radius` limits the magnitude
+/// of the resulting value. `rigid_constraint_count` determines the constraints
+/// that will not be moved. These are assumed to be trivially satisfiable (in
+/// practice these correspond to obstacles in RVO, which can be satisfied by a
+/// velocity of 0). `index_of_failed_line` and `partial_value` are the results
+/// from the infeasible 2D program, where `partial_value` is assumed to satisfy
+/// all `constraints[0..index_of_failed_line]`.
 fn solve_linear_program_3d(
   constraints: &[Line],
   rigid_constraint_count: usize,
@@ -769,9 +769,9 @@ mod tests {
       assert_vec2_near!(
         solve_linear_program_3d(
           &constraints,
-          /*rigid_constraint_count=*/ 0,
-          /*radius=*/ 2.0,
-          /*index_of_failed_line=*/ 0,
+          /* rigid_constraint_count= */ 0,
+          /* radius= */ 2.0,
+          /* index_of_failed_line= */ 0,
           Vec2::new(0.0, 0.0)
         ),
         // I had to do some math to solve this. This is the point equa-distant
@@ -791,14 +791,14 @@ mod tests {
         },
       ];
 
-      // The first two constraints cannot be relaxed, so (0, 0) is the best value
-      // (nearest to satisfying the third constraint).
+      // The first two constraints cannot be relaxed, so (0, 0) is the best
+      // value (nearest to satisfying the third constraint).
       assert_vec2_near!(
         solve_linear_program_3d(
           &constraints,
-          /*rigid_constraint_count=*/ 2,
-          /*radius=*/ 2.0,
-          /*index_of_failed_line=*/ 2,
+          /* rigid_constraint_count= */ 2,
+          /* radius= */ 2.0,
+          /* index_of_failed_line= */ 2,
           Vec2::new(0.0, 0.0)
         ),
         Vec2::new(0.0, 0.0)
@@ -813,9 +813,9 @@ mod tests {
       assert_vec2_near!(
         solve_linear_program_3d(
           &constraints,
-          /*rigid_constraint_count=*/ 1,
-          /*radius=*/ 2.0,
-          /*index_of_failed_line=*/ 1,
+          /* rigid_constraint_count= */ 1,
+          /* radius= */ 2.0,
+          /* index_of_failed_line= */ 1,
           Vec2::new(0.0, 0.0)
         ),
         Vec2::new(-(PI / 8.0).tan(), 0.0)
@@ -836,8 +836,8 @@ mod tests {
       assert_eq!(
         solve_linear_program(
           Default::default(),
-          /*rigid_constraint_count=*/ 0,
-          /*radius=*/ 1.0,
+          /* rigid_constraint_count= */ 0,
+          /* radius= */ 1.0,
           Vec2::new(0.5, 0.25)
         ),
         Vec2::new(0.5, 0.25)
@@ -846,8 +846,8 @@ mod tests {
       assert_eq!(
         solve_linear_program(
           Default::default(),
-          /*rigid_constraint_count=*/ 0,
-          /*radius=*/ 1.0,
+          /* rigid_constraint_count= */ 0,
+          /* radius= */ 1.0,
           Vec2::new(1.0, 1.0)
         ),
         Vec2::new(one_over_root_2, one_over_root_2)
@@ -867,8 +867,8 @@ mod tests {
       assert_eq!(
         solve_linear_program(
           &constraints,
-          /*rigid_constraint_count=*/ 0,
-          /*radius=*/ 1.0,
+          /* rigid_constraint_count= */ 0,
+          /* radius= */ 1.0,
           Vec2::new(-0.1, 0.3)
         ),
         Vec2::new(-0.1, 0.3)
@@ -878,8 +878,8 @@ mod tests {
       assert_eq!(
         solve_linear_program(
           &constraints,
-          /*rigid_constraint_count=*/ 0,
-          /*radius=*/ 1.0,
+          /* rigid_constraint_count= */ 0,
+          /* radius= */ 1.0,
           Vec2::new(-2.0, 2.0)
         ),
         Vec2::new(-one_over_root_2, one_over_root_2)
@@ -889,8 +889,8 @@ mod tests {
       assert_eq!(
         solve_linear_program(
           &constraints,
-          /*rigid_constraint_count=*/ 0,
-          /*radius=*/ 1.0,
+          /* rigid_constraint_count= */ 0,
+          /* radius= */ 1.0,
           Vec2::new(2.0, 0.5)
         ),
         Vec2::new(0.5, 0.5)
@@ -900,8 +900,8 @@ mod tests {
       assert_eq!(
         solve_linear_program(
           &constraints,
-          /*rigid_constraint_count=*/ 0,
-          /*radius=*/ 1.0,
+          /* rigid_constraint_count= */ 0,
+          /* radius= */ 1.0,
           Vec2::new(0.0, -0.5)
         ),
         Vec2::new(0.0, -0.25)
@@ -911,8 +911,8 @@ mod tests {
       assert_eq!(
         solve_linear_program(
           &constraints,
-          /*rigid_constraint_count=*/ 0,
-          /*radius=*/ 1.0,
+          /* rigid_constraint_count= */ 0,
+          /* radius= */ 1.0,
           Vec2::new(1.0, -0.5)
         ),
         Vec2::new(0.5, -0.25)
@@ -935,9 +935,9 @@ mod tests {
       assert_vec2_near!(
         solve_linear_program(
           &constraints,
-          /*rigid_constraint_count=*/ 0,
-          /*radius=*/ 2.0,
-          /*preferred_value=*/ Vec2::new(1.0, 1.0)
+          /* rigid_constraint_count= */ 0,
+          /* radius= */ 2.0,
+          /* preferred_value= */ Vec2::new(1.0, 1.0)
         ),
         // I had to do some math to solve this. This is the point equa-distant
         // from all three constraint lines.
@@ -956,14 +956,14 @@ mod tests {
         },
       ];
 
-      // The first two constraints cannot be relaxed, so (0, 0) is the best value
-      // (nearest to satisfying the third constraint).
+      // The first two constraints cannot be relaxed, so (0, 0) is the best
+      // value (nearest to satisfying the third constraint).
       assert_vec2_near!(
         solve_linear_program(
           &constraints,
-          /*rigid_constraint_count=*/ 2,
-          /*radius=*/ 2.0,
-          /*preferred_value=*/ Vec2::new(0.0, 0.0)
+          /* rigid_constraint_count= */ 2,
+          /* radius= */ 2.0,
+          /* preferred_value= */ Vec2::new(0.0, 0.0)
         ),
         Vec2::new(0.0, 0.0)
       );
@@ -977,9 +977,9 @@ mod tests {
       assert_vec2_near!(
         solve_linear_program(
           &constraints,
-          /*rigid_constraint_count=*/ 1,
-          /*radius=*/ 2.0,
-          /*preferred_value=*/ Vec2::new(0.0, 0.0)
+          /* rigid_constraint_count= */ 1,
+          /* radius= */ 2.0,
+          /* preferred_value= */ Vec2::new(0.0, 0.0)
         ),
         Vec2::new(-(PI / 8.0).tan(), 0.0)
       );

@@ -29,40 +29,40 @@ use crate::linear_programming::{solve_linear_program, Plane};
 pub use glam::Vec3;
 pub use simulator::{AgentParameters, Simulator, SimulatorMargin};
 
-// A single agent in the simulation.
+/// A single agent in the simulation.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Agent {
-  // The position of the agent.
+  /// The position of the agent.
   pub position: Vec3,
-  // The current velocity of the agent.
+  /// The current velocity of the agent.
   pub velocity: Vec3,
 
-  // The radius of the agent. Agents will use this to avoid bumping into each
-  // other.
+  /// The radius of the agent. Agents will use this to avoid bumping into each
+  /// other.
   pub radius: f32,
-  // The amount of responsibility an agent has to avoid other agents. The
-  // amount of avoidance between two agents is then dependent on the ratio of
-  // the responsibility between the agents. Note this does not affect
-  // avoidance of obstacles.
+  /// The amount of responsibility an agent has to avoid other agents. The
+  /// amount of avoidance between two agents is then dependent on the ratio of
+  /// the responsibility between the agents. Note this does not affect
+  /// avoidance of obstacles.
   pub avoidance_responsibility: f32,
 }
 
-// Parameters for computing the avoidance vector.
+/// Parameters for computing the avoidance vector.
 #[derive(Clone, PartialEq, Debug)]
 pub struct AvoidanceOptions {
-  // How long in the future should collisions be considered between agents.
+  /// How long in the future should collisions be considered between agents.
   pub time_horizon: f32,
 }
 
 impl Agent {
-  // Computes a velocity based off the agent's preferred velocity (usually the
-  // direction to its current goal/waypoint). This new velocity is intended to
-  // avoid running into the agent's `neighbours`. This is not always possible,
-  // but agents will attempt to resolve any collisions in a reasonable fashion.
-  // The `max_speed` is the maximum magnitude of the returned velocity. Even if
-  // the `preferred_velocity` is larger than `max_speed`, the resulting vector
-  // will be at most `max_speed` in length. The `time_step` helps determine the
-  // velocity in cases of existing collisions, and must be positive.
+  /// Computes a velocity based off the agent's preferred velocity (usually the
+  /// direction to its current goal/waypoint). This new velocity is intended to
+  /// avoid running into the agent's `neighbours`. This is not always possible,
+  /// but agents will attempt to resolve any collisions in a reasonable fashion.
+  /// The `max_speed` is the maximum magnitude of the returned velocity. Even if
+  /// the `preferred_velocity` is larger than `max_speed`, the resulting vector
+  /// will be at most `max_speed` in length. The `time_step` helps determine the
+  /// velocity in cases of existing collisions, and must be positive.
   pub fn compute_avoiding_velocity(
     &self,
     neighbours: &[Cow<'_, Agent>],
@@ -87,8 +87,8 @@ impl Agent {
     solve_linear_program(&planes, max_speed, preferred_velocity)
   }
 
-  // Creates a plane to describe the half-space of valid velocities that should
-  // not collide with `neighbour`.
+  /// Creates a plane to describe the half-space of valid velocities that should
+  /// not collide with `neighbour`.
   fn get_plane_for_neighbour(
     &self,
     neighbour: &Agent,
