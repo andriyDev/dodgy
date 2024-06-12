@@ -326,7 +326,7 @@ impl Cone {
   }
 
   fn derive_related_angle(left_point: Vec2, right_point: Vec2) -> f32 {
-    Vec2::angle_between(left_point - right_point, left_point)
+    Vec2::angle_to(left_point - right_point, left_point)
   }
 
   fn distance_at_angle(&self, angle: f32) -> f32 {
