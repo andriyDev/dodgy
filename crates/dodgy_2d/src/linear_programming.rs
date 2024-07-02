@@ -152,8 +152,8 @@ fn solve_linear_program_along_line(
     }
   }
 
-  let t = match optimal_value {
-    &OptimalValue::Direction(direction) => {
+  let t = match *optimal_value {
+    OptimalValue::Direction(direction) => {
       // If the optimal value is determined by a direction, just pick the most
       // extreme value in that direction. This will always either be t_right or
       // t_left.
@@ -163,7 +163,7 @@ fn solve_linear_program_along_line(
         t_left
       }
     }
-    &OptimalValue::Point(point) => {
+    OptimalValue::Point(point) => {
       // If the optimal value is determined by a point, project that point onto
       // the line segment [t_left, t_right].
 
@@ -202,17 +202,17 @@ fn solve_linear_program_2d(
   radius: f32,
   optimal_value: &OptimalValue,
 ) -> LinearProgram2DResult {
-  let mut best_value = match optimal_value {
+  let mut best_value = match *optimal_value {
     // If optimizing by a direction, the best value is just on the circle in
     // that direction.
-    &OptimalValue::Direction(direction) => direction * radius,
+    OptimalValue::Direction(direction) => direction * radius,
     // If using a point and the point is outside the circle, clamp it back to
     // the circle.
-    &OptimalValue::Point(point) if point.length_squared() > radius * radius => {
+    OptimalValue::Point(point) if point.length_squared() > radius * radius => {
       point.normalize() * radius
     }
     // If using a point and the point is inside the circle, use it as is.
-    &OptimalValue::Point(point) => point,
+    OptimalValue::Point(point) => point,
   };
 
   for (index, constraint) in constraints.iter().enumerate() {
@@ -307,9 +307,8 @@ fn solve_linear_program_3d(
       let intersection_determinant =
         determinant(constraint.direction, previous_constraint.direction);
 
-      let intersection_point;
-
-      if intersection_determinant.abs() <= RVO_EPSILON {
+      let intersection_point = if intersection_determinant.abs() <= RVO_EPSILON
+      {
         // The constraint lines are parallel.
 
         if constraint.direction.dot(previous_constraint.direction) > 0.0 {
@@ -320,8 +319,7 @@ fn solve_linear_program_3d(
 
         // The constraint lines point in opposite directions, so the average of
         // the two lines is where the constraints are violated the same amount.
-        intersection_point =
-          (constraint.point + previous_constraint.point) * 0.5;
+        (constraint.point + previous_constraint.point) * 0.5
       } else {
         // Use linear algebra to solve for the time of intersect between the
         // constraint lines (for the `constraint` line).
@@ -331,8 +329,7 @@ fn solve_linear_program_3d(
         ) / intersection_determinant;
 
         // Compute the actual intersection point.
-        intersection_point =
-          constraint.point + intersection_t * constraint.direction;
+        constraint.point + intersection_t * constraint.direction
       };
 
       penetration_constraints.push(Line {

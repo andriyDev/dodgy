@@ -15,7 +15,7 @@ impl VisibilitySet {
   }
 
   pub fn is_line_visible(&self, start_point: Vec2, end_point: Vec2) -> bool {
-    if self.cones.len() == 0 {
+    if self.cones.is_empty() {
       return true;
     }
 
@@ -254,6 +254,12 @@ impl VisibilitySet {
 
   pub fn get_visible_line_ids(&self) -> HashSet<u32> {
     self.cones.iter().map(|cone| cone.line_id).collect()
+  }
+}
+
+impl Default for VisibilitySet {
+  fn default() -> Self {
+    Self::new()
   }
 }
 
