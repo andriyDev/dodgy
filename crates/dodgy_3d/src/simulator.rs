@@ -108,6 +108,12 @@ impl Simulator {
   }
 }
 
+impl Default for Simulator {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 #[cfg(test)]
 #[path = "simulator_test.rs"]
 mod test;
