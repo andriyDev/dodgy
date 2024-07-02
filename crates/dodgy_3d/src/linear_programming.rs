@@ -156,8 +156,8 @@ fn solve_linear_program_along_line(
     }
   }
 
-  let t = match optimal_value {
-    &OptimalValue::Direction(direction) => {
+  let t = match *optimal_value {
+    OptimalValue::Direction(direction) => {
       // If the optimal value is determined by a direction, just pick the most
       // extreme value in that direction. This will always either be t_right or
       // t_left.
@@ -167,7 +167,7 @@ fn solve_linear_program_along_line(
         t_left
       }
     }
-    &OptimalValue::Point(point) => {
+    OptimalValue::Point(point) => {
       // If the optimal value is determined by a point, project that point onto
       // the line segment [t_left, t_right].
 
@@ -209,8 +209,8 @@ fn solve_linear_program_along_plane(
     radius_squared - plane_distance_squared_from_origin;
   let valid_plane_center = plane_distance_from_origin * plane.normal;
 
-  let mut best_value = match optimal_value {
-    &OptimalValue::Direction(direction) => {
+  let mut best_value = match *optimal_value {
+    OptimalValue::Direction(direction) => {
       let projected_optimal_direction_in_plane =
         direction - direction.dot(plane.normal) * plane.normal;
       let squared_length_of_projection = projected_optimal_direction_in_plane
@@ -225,7 +225,7 @@ fn solve_linear_program_along_plane(
             * projected_optimal_direction_in_plane
       }
     }
-    &OptimalValue::Point(point) => {
+    OptimalValue::Point(point) => {
       let distance_from_plane = plane.signed_distance_to_plane(point);
       let projected_point = point - distance_from_plane * plane.normal;
 
@@ -306,17 +306,17 @@ fn solve_linear_program_3d(
   radius: f32,
   optimal_value: &OptimalValue,
 ) -> LinearProgram3DResult {
-  let mut best_value = match optimal_value {
+  let mut best_value = match *optimal_value {
     // If optimizing by a direction, the best value is just on the sphere in
     // that direction.
-    &OptimalValue::Direction(direction) => direction * radius,
+    OptimalValue::Direction(direction) => direction * radius,
     // If using a point and the point is outside the sphere, clamp it back to
     // the sphere.
-    &OptimalValue::Point(point) if point.length_squared() > radius * radius => {
+    OptimalValue::Point(point) if point.length_squared() > radius * radius => {
       point.normalize() * radius
     }
     // If using a point and the point is inside the sphere, use it as is.
-    &OptimalValue::Point(point) => point,
+    OptimalValue::Point(point) => point,
   };
 
   for (index, constraint) in constraints.iter().enumerate() {
@@ -393,8 +393,7 @@ fn solve_linear_program_4d(
 
       let cross = previous_constraint.normal.cross(constraint.normal);
 
-      let new_plane_point;
-      if cross.dot(cross) <= RVO_EPSILON {
+      let new_plane_point = if cross.dot(cross) <= RVO_EPSILON {
         // The constraint planes are parallel.
 
         if constraint.normal.dot(previous_constraint.normal) > 0.0 {
@@ -405,14 +404,14 @@ fn solve_linear_program_4d(
 
         // The constraint planes point in opposite directions, so the average of
         // the two planes is where the constraints are violated the same amount.
-        new_plane_point = (constraint.point + previous_constraint.point) * 0.5;
+        (constraint.point + previous_constraint.point) * 0.5
       } else {
         let line_normal = cross.cross(constraint.normal);
-        new_plane_point = constraint.point
+        constraint.point
           - previous_constraint.signed_distance_to_plane(constraint.point)
             / line_normal.dot(previous_constraint.normal)
-            * line_normal;
-      }
+            * line_normal
+      };
       penetration_constraints.push(Plane {
         point: new_plane_point,
         normal: (previous_constraint.normal - constraint.normal).normalize(),
