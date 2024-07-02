@@ -83,15 +83,13 @@ fn get_lines_for_agent_to_obstacle_const<const CLOSED: bool>(
         let center = vertices[i];
         let right = vertices[if i == vertices.len() - 1 { 0 } else { i + 1 }];
         convexity.push(determinant(right - center, left - center) >= 0.0);
+      } else if i == 0 || i == vertices.len() - 1 {
+        convexity.push(true);
       } else {
-        if i == 0 || i == vertices.len() - 1 {
-          convexity.push(true);
-        } else {
-          let left = vertices[i - 1];
-          let center = vertices[i];
-          let right = vertices[i + 1];
-          convexity.push(determinant(right - center, left - center) >= 0.0);
-        }
+        let left = vertices[i - 1];
+        let center = vertices[i];
+        let right = vertices[i + 1];
+        convexity.push(determinant(right - center, left - center) >= 0.0);
       }
     }
     convexity
@@ -162,6 +160,7 @@ struct EdgeVertex {
   convex: bool,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn get_line_for_agent_to_edge(
   agent: &Agent,
   mut left_vertex: EdgeVertex,
@@ -281,8 +280,7 @@ fn get_line_for_agent_to_edge(
       point: Vec2::ZERO,
       direction: relative_right_vertex.perp().normalize(),
     });
-  } else if 0.0 <= edge_t
-    && edge_t <= 1.0
+  } else if (0.0..=1.0).contains(&edge_t)
     && dist_to_edge_line_squared <= squared_radius
   {
     return Some(Line { point: Vec2::ZERO, direction: -edge_unit_vector });
@@ -389,8 +387,7 @@ fn get_line_for_agent_to_edge(
   let mut is_left_shadow_covered = false;
   let mut is_right_shadow_covered = false;
 
-  let left_edge_direction =
-    left_left_vertex.and_then(|v| Some(v - left_vertex.point));
+  let left_edge_direction = left_left_vertex.map(|v| v - left_vertex.point);
   if left_vertex.convex
     && left_edge_direction.is_some()
     && determinant(left_shadow_direction, left_edge_direction.unwrap()) >= 0.0
@@ -399,8 +396,7 @@ fn get_line_for_agent_to_edge(
     is_left_shadow_covered = true;
   }
 
-  let right_edge_direction =
-    right_right_vertex.and_then(|v| Some(v - right_vertex.point));
+  let right_edge_direction = right_right_vertex.map(|v| v - right_vertex.point);
   if right_vertex.convex
     && right_edge_direction.is_some()
     && determinant(right_shadow_direction, right_edge_direction.unwrap()) <= 0.0
@@ -477,13 +473,13 @@ fn get_line_for_agent_to_edge(
   // generated. The constraint will already be created by the edge that covered
   // the shadow.
 
-  let cutoff_edge_distance_squared =
-    if t_cutoff_edge < 0.0 || t_cutoff_edge > 1.0 || is_degenerate_edge {
-      f32::INFINITY
-    } else {
-      (velocity - (left_cutoff + t_cutoff_edge * cutoff_vector))
-        .length_squared()
-    };
+  let cutoff_edge_distance_squared = if !(0.0..=1.0).contains(&t_cutoff_edge)
+    || is_degenerate_edge
+  {
+    f32::INFINITY
+  } else {
+    (velocity - (left_cutoff + t_cutoff_edge * cutoff_vector)).length_squared()
+  };
   let left_shadow_distance_squared = if t_left_shadow < 0.0 {
     f32::INFINITY
   } else {
@@ -515,16 +511,14 @@ fn get_line_for_agent_to_edge(
           + edge_margin / time_horizon * left_shadow_direction.perp(),
       })
     }
+  } else if is_right_shadow_covered {
+    None
   } else {
-    if is_right_shadow_covered {
-      None
-    } else {
-      Some(Line {
-        direction: -right_shadow_direction,
-        point: right_cutoff
-          - edge_margin / time_horizon * right_shadow_direction.perp(),
-      })
-    }
+    Some(Line {
+      direction: -right_shadow_direction,
+      point: right_cutoff
+        - edge_margin / time_horizon * right_shadow_direction.perp(),
+    })
   }
 }
 

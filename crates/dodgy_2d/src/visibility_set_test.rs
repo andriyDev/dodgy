@@ -4,7 +4,7 @@ use super::VisibilitySet;
 
 #[test]
 fn empty_always_visible() {
-  let viz = VisibilitySet::new();
+  let viz = VisibilitySet::default();
 
   assert!(viz.is_line_visible(Vec2::new(1.0, 0.0), Vec2::new(0.0, 1.0)));
   assert!(viz.is_line_visible(Vec2::new(-3.0, -2.0), Vec2::new(-3.001, -1.0)));

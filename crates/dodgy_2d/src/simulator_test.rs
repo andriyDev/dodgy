@@ -19,7 +19,7 @@ macro_rules! assert_vec_near {
 
 #[test]
 fn two_agent_one_obstacle_simulation() {
-  let mut simulator = Simulator::new();
+  let mut simulator = Simulator::default();
 
   simulator.add_agent(
     Agent {

@@ -38,11 +38,7 @@ impl Simulator {
   }
 
   pub fn add_obstacle(&mut self, obstacle: Obstacle) {
-    assert!(if let Obstacle::Closed { vertices: _ } = &obstacle {
-      true
-    } else {
-      false
-    });
+    matches!(&obstacle, Obstacle::Closed { .. });
 
     self.obstacles.push(obstacle);
   }
@@ -138,6 +134,12 @@ impl Simulator {
       agent.velocity = new_velocity;
       agent.position += new_velocity * time_step;
     }
+  }
+}
+
+impl Default for Simulator {
+  fn default() -> Self {
+    Self::new()
   }
 }
 
