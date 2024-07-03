@@ -198,3 +198,51 @@ mod get_line_for_neighbour_tests {
     );
   }
 }
+
+mod compute_avoiding_velocity_tests {
+  use super::*;
+
+  #[test]
+  fn invalidating_obstacles_falls_back_to_zero_velocity() {
+    let agent = Agent {
+      position: Vec2::ZERO,
+      velocity: Vec2::new(2.0, 0.0),
+      radius: 0.5,
+      avoidance_responsibility: 1.0,
+    };
+
+    let preferred_velocity = Vec2::new(2.0, 0.0);
+    let time_step = 0.01;
+
+    let obstacles: Vec<Cow<Obstacle>> = vec![
+      Cow::Owned(Obstacle::Closed {
+        vertices: vec![
+          Vec2::new(1.0, 10.0),
+          Vec2::new(1.0, 0.0),
+          Vec2::new(2.0, 10.0),
+        ],
+      }),
+      Cow::Owned(Obstacle::Closed {
+        vertices: vec![
+          Vec2::new(1.0, 1e-6),
+          Vec2::new(1.0, -10.0),
+          Vec2::new(2.0, -10.0),
+        ],
+      }),
+    ];
+
+    // Just check that this does not panic.
+    agent.compute_avoiding_velocity(
+      &[],
+      &obstacles,
+      preferred_velocity,
+      /* max_speed= */ 2.0,
+      time_step,
+      &AvoidanceOptions {
+        obstacle_margin: 0.0,
+        obstacle_time_horizon: 1.0,
+        time_horizon: 1.0,
+      },
+    );
+  }
+}
