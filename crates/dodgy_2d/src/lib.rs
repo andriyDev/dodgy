@@ -114,12 +114,54 @@ impl Agent {
     // just the other lines.
     let obstacle_line_count = lines.len() - neighbours.len();
 
+    if let Some(result) = solve_linear_program(
+      &lines,
+      obstacle_line_count,
+      max_speed,
+      preferred_velocity,
+    ) {
+      return result;
+    }
+
+    let zero_velocity_agent = {
+      let mut clone = self.clone();
+      clone.velocity = Vec2::ZERO;
+      clone
+    };
+
+    let lines = obstacles
+      .iter()
+      .flat_map(|o| {
+        get_lines_for_agent_to_obstacle(
+          // Since the obstacle constraints failed last time, now fallback to
+          // pretending the agent is stationary for the purposes of generating
+          // trivially solvable obstacle constraints.
+          &zero_velocity_agent,
+          o,
+          avoidance_options.obstacle_margin,
+          avoidance_options.obstacle_time_horizon,
+        )
+      })
+      .chain(neighbours.iter().map(|neighbour| {
+        self.get_line_for_neighbour(
+          neighbour,
+          avoidance_options.time_horizon,
+          time_step,
+        )
+      }))
+      .collect::<Vec<Line>>();
+
+    // Since each neighbour generates one line, the number of obstacle lines is
+    // just the other lines.
+    let obstacle_line_count = lines.len() - neighbours.len();
+
     solve_linear_program(
       &lines,
       obstacle_line_count,
       max_speed,
       preferred_velocity,
     )
+    .expect("The obstacle constraints should be trivially solvable.")
   }
 
   /// Creates a line to describe the half-plane of valid velocities that should

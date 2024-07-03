@@ -466,7 +466,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(0.5, 0.25)
       ),
-      Vec2::new(0.5, 0.25)
+      Some(Vec2::new(0.5, 0.25))
     );
 
     assert_eq!(
@@ -476,7 +476,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(1.0, 1.0)
       ),
-      Vec2::new(one_over_root_2, one_over_root_2)
+      Some(Vec2::new(one_over_root_2, one_over_root_2))
     );
   }
 
@@ -497,7 +497,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(-0.1, 0.3)
       ),
-      Vec2::new(-0.1, 0.3)
+      Some(Vec2::new(-0.1, 0.3))
     );
 
     // Limited to radius.
@@ -508,7 +508,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(-2.0, 2.0)
       ),
-      Vec2::new(-one_over_root_2, one_over_root_2)
+      Some(Vec2::new(-one_over_root_2, one_over_root_2))
     );
 
     // Restricted by `constraints[0]`.
@@ -519,7 +519,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(2.0, 0.5)
       ),
-      Vec2::new(0.5, 0.5)
+      Some(Vec2::new(0.5, 0.5))
     );
 
     // Restricted by `constraints[1]`.
@@ -530,7 +530,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(0.0, -0.5)
       ),
-      Vec2::new(0.0, -0.25)
+      Some(Vec2::new(0.0, -0.25))
     );
 
     // Restricted by both constraints.
@@ -541,7 +541,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(1.0, -0.5)
       ),
-      Vec2::new(0.5, -0.25)
+      Some(Vec2::new(0.5, -0.25))
     );
   }
 
@@ -564,7 +564,8 @@ mod solve_linear_program_tests {
         /* rigid_constraint_count= */ 0,
         /* radius= */ 2.0,
         /* preferred_value= */ Vec2::new(1.0, 1.0)
-      ),
+      )
+      .expect("there are no rigid constraints, so we can't fail."),
       // I had to do some math to solve this. This is the point equa-distant
       // from all three constraint lines.
       Vec2::new(-1.0, -1.0).normalize() * (root_2 / (2.0 + root_2))
@@ -590,7 +591,8 @@ mod solve_linear_program_tests {
         /* rigid_constraint_count= */ 2,
         /* radius= */ 2.0,
         /* preferred_value= */ Vec2::new(0.0, 0.0)
-      ),
+      )
+      .expect("the rigid constraints do not fully invalidate the program"),
       Vec2::new(0.0, 0.0)
     );
 
@@ -606,8 +608,30 @@ mod solve_linear_program_tests {
         /* rigid_constraint_count= */ 1,
         /* radius= */ 2.0,
         /* preferred_value= */ Vec2::new(0.0, 0.0)
-      ),
+      )
+      .expect("the rigid constraint does not fully invalidate the program"),
       Vec2::new(-(PI / 8.0).tan(), 0.0)
+    );
+  }
+
+  #[test]
+  fn fully_invalidating_rigid_constraints_returns_none() {
+    let constraints = [
+      Line { direction: Vec2::new(0.0, 1.0), point: Vec2::new(1.0, 0.0) },
+      Line {
+        direction: Vec2::new(0.0, -1.0),
+        point: Vec2::new(1.0 + 1e-6, 0.0),
+      },
+    ];
+
+    assert_eq!(
+      solve_linear_program(
+        &constraints,
+        /* rigid_constraint_count= */ 2,
+        /* radius= */ 2.0,
+        /* preferred_value= */ Vec2::new(0.0, 0.0)
+      ),
+      None
     );
   }
 }
