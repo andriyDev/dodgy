@@ -293,8 +293,20 @@ impl Agent {
 
       // The direction of the velocity from `cutoff_circle_center` is therefore
       // the normal to the velocity obstacle.
-      vo_normal =
-        (relative_agent_velocity - cutoff_circle_center).normalize_or_zero();
+      vo_normal = {
+        let velocity_from_circle_center =
+          relative_agent_velocity - cutoff_circle_center;
+        // If the vector has a length of zero, pick a random direction. Fork the
+        // implementation of `normalize_or` so we only compute random
+        // values if necessary (which should be very rare).
+        let recip = velocity_from_circle_center.length_recip();
+        if recip.is_finite() && recip > 0.0 {
+          velocity_from_circle_center * recip
+        } else {
+          let angle: f32 = rand::random();
+          Vec2::new(angle.cos(), angle.sin())
+        }
+      };
       // Get the point on the cut-off circle in that direction (which is the
       // agent's velocity projected to the circle).
       relative_velocity_projected_to_vo =
