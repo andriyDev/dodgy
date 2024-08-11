@@ -245,4 +245,31 @@ mod compute_avoiding_velocity_tests {
       },
     );
   }
+
+  #[test]
+  fn moves_apart_if_directly_on_top_of_each_other() {
+    let agent = Agent {
+      position: Vec2::ZERO,
+      velocity: Vec2::ZERO,
+      radius: 0.5,
+      avoidance_responsibility: 1.0,
+    };
+
+    let avoiding_velocity = agent.compute_avoiding_velocity(
+      &[Cow::Owned(agent.clone())],
+      &[],
+      /* preferred_velocity= */ Vec2::ZERO,
+      /* max_speed= */ 2.0,
+      /* time_step= */ 0.01,
+      &AvoidanceOptions {
+        obstacle_margin: 0.0,
+        obstacle_time_horizon: 1.0,
+        time_horizon: 1.0,
+      },
+    );
+
+    // Agents will move in a random direction if they are perfectly on top of
+    // one another.
+    assert_ne!(avoiding_velocity, Vec2::ZERO);
+  }
 }
