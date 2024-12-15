@@ -25,8 +25,12 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
       - run: cargo build
       - name: cargo test
-        run: cargo test --all-features --all-targets
+        run: cargo test --all-targets
       - name: cargo test --doc
+        run: cargo test --doc
+      - name: cargo test --all-features
+        run: cargo test --all-features --all-targets
+      - name: cargo test --all-features --doc
         run: cargo test --all-features --doc
   coverage:
     name: Coverage
@@ -55,6 +59,7 @@ jobs:
           submodules: true
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo clippy -- -D warnings
+      - run: cargo clippy --features=debug -- -D warnings
   format:
     name: Format
     runs-on: ubuntu-latest

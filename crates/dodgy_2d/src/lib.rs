@@ -25,6 +25,9 @@ mod obstacles;
 mod simulator;
 mod visibility_set;
 
+#[cfg(feature = "debug")]
+pub mod debug;
+
 use std::borrow::Cow;
 
 pub use glam::Vec2;
@@ -89,6 +92,52 @@ impl Agent {
     time_step: f32,
     avoidance_options: &AvoidanceOptions,
   ) -> Vec2 {
+    let result = self.compute_avoiding_velocity_internal(
+      neighbours,
+      obstacles,
+      preferred_velocity,
+      max_speed,
+      time_step,
+      avoidance_options,
+    );
+    #[cfg(feature = "debug")]
+    return result.0;
+    #[cfg(not(feature = "debug"))]
+    result
+  }
+
+  #[cfg(feature = "debug")]
+  /// Same as [`Self::compute_avoiding_velocity`], but additionally provides
+  /// debug data.
+  pub fn compute_avoiding_velocity_with_debug(
+    &self,
+    neighbours: &[Cow<'_, Agent>],
+    obstacles: &[Cow<'_, Obstacle>],
+    preferred_velocity: Vec2,
+    max_speed: f32,
+    time_step: f32,
+    avoidance_options: &AvoidanceOptions,
+  ) -> (Vec2, debug::DebugData) {
+    self.compute_avoiding_velocity_internal(
+      neighbours,
+      obstacles,
+      preferred_velocity,
+      max_speed,
+      time_step,
+      avoidance_options,
+    )
+  }
+
+  /// The implementation of [`Self::compute_avoiding_velocity`].
+  fn compute_avoiding_velocity_internal(
+    &self,
+    neighbours: &[Cow<'_, Agent>],
+    obstacles: &[Cow<'_, Obstacle>],
+    preferred_velocity: Vec2,
+    max_speed: f32,
+    time_step: f32,
+    avoidance_options: &AvoidanceOptions,
+  ) -> AvoidingVelocityReturn {
     assert!(time_step > 0.0, "time_step must be positive, was {}", time_step);
 
     let lines = obstacles
@@ -120,6 +169,8 @@ impl Agent {
       max_speed,
       preferred_velocity,
     ) {
+      #[cfg(feature = "debug")]
+      let result = (result, debug::DebugData::Satisfied { constraints: lines });
       return result;
     }
 
@@ -129,7 +180,7 @@ impl Agent {
       clone
     };
 
-    let lines = obstacles
+    let zero_velocity_lines = obstacles
       .iter()
       .flat_map(|o| {
         get_lines_for_agent_to_obstacle(
@@ -153,15 +204,25 @@ impl Agent {
 
     // Since each neighbour generates one line, the number of obstacle lines is
     // just the other lines.
-    let obstacle_line_count = lines.len() - neighbours.len();
+    let obstacle_line_count = zero_velocity_lines.len() - neighbours.len();
 
-    solve_linear_program(
-      &lines,
+    let result = solve_linear_program(
+      &zero_velocity_lines,
       obstacle_line_count,
       max_speed,
       preferred_velocity,
     )
-    .expect("The obstacle constraints should be trivially solvable.")
+    .expect("The obstacle constraints should be trivially solvable.");
+
+    #[cfg(feature = "debug")]
+    let result = (
+      result,
+      debug::DebugData::Fallback {
+        original_constraints: lines,
+        fallback_constraints: zero_velocity_lines,
+      },
+    );
+    result
   }
 
   /// Creates a line to describe the half-plane of valid velocities that should
@@ -331,6 +392,12 @@ impl Agent {
     }
   }
 }
+
+// Type alias so we can only construct the debug data if necessary.
+#[cfg(feature = "debug")]
+type AvoidingVelocityReturn = (Vec2, debug::DebugData);
+#[cfg(not(feature = "debug"))]
+type AvoidingVelocityReturn = Vec2;
 
 #[cfg(test)]
 #[path = "lib_test.rs"]
