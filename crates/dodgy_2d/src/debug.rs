@@ -2,6 +2,7 @@
 pub use crate::linear_programming::Line;
 
 /// Internal data that is used to generate the final suggested velocity.
+#[derive(Debug, Clone)]
 pub enum DebugData {
   /// The original problem (where the agent uses its current velocity) was
   /// solved.
