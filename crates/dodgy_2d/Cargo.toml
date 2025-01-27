@@ -15,7 +15,7 @@ keywords = ["orca", "rvo", "collision", "avoidance", "navigation"]
 
 [dependencies]
 glam = "0.29.1"
-rand = "0.8.5"
+rand = "0.9.0"
 
 [features]
 # Allows access to some of the internal data used to generate the final suggested velocity.
