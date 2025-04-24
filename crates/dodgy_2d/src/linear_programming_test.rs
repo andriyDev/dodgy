@@ -466,7 +466,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(0.5, 0.25)
       ),
-      Some(Vec2::new(0.5, 0.25))
+      Ok(Vec2::new(0.5, 0.25))
     );
 
     assert_eq!(
@@ -476,7 +476,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(1.0, 1.0)
       ),
-      Some(Vec2::new(one_over_root_2, one_over_root_2))
+      Ok(Vec2::new(one_over_root_2, one_over_root_2))
     );
   }
 
@@ -497,7 +497,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(-0.1, 0.3)
       ),
-      Some(Vec2::new(-0.1, 0.3))
+      Ok(Vec2::new(-0.1, 0.3))
     );
 
     // Limited to radius.
@@ -508,7 +508,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(-2.0, 2.0)
       ),
-      Some(Vec2::new(-one_over_root_2, one_over_root_2))
+      Ok(Vec2::new(-one_over_root_2, one_over_root_2))
     );
 
     // Restricted by `constraints[0]`.
@@ -519,7 +519,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(2.0, 0.5)
       ),
-      Some(Vec2::new(0.5, 0.5))
+      Ok(Vec2::new(0.5, 0.5))
     );
 
     // Restricted by `constraints[1]`.
@@ -530,7 +530,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(0.0, -0.5)
       ),
-      Some(Vec2::new(0.0, -0.25))
+      Ok(Vec2::new(0.0, -0.25))
     );
 
     // Restricted by both constraints.
@@ -541,7 +541,7 @@ mod solve_linear_program_tests {
         /* radius= */ 1.0,
         Vec2::new(1.0, -0.5)
       ),
-      Some(Vec2::new(0.5, -0.25))
+      Ok(Vec2::new(0.5, -0.25))
     );
   }
 
@@ -615,7 +615,7 @@ mod solve_linear_program_tests {
   }
 
   #[test]
-  fn fully_invalidating_rigid_constraints_returns_none() {
+  fn fully_invalidating_rigid_constraints_returns_err() {
     let constraints = [
       Line { direction: Vec2::new(0.0, 1.0), point: Vec2::new(1.0, 0.0) },
       Line {
@@ -624,14 +624,12 @@ mod solve_linear_program_tests {
       },
     ];
 
-    assert_eq!(
-      solve_linear_program(
-        &constraints,
-        /* rigid_constraint_count= */ 2,
-        /* radius= */ 2.0,
-        /* preferred_value= */ Vec2::new(0.0, 0.0)
-      ),
-      None
-    );
+    assert!(solve_linear_program(
+      &constraints,
+      /* rigid_constraint_count= */ 2,
+      /* radius= */ 2.0,
+      /* preferred_value= */ Vec2::new(0.0, 0.0)
+    )
+    .is_err());
   }
 }

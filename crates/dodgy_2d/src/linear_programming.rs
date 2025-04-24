@@ -38,28 +38,27 @@ pub struct Line {
 /// satisfying all constraints is infeasible, the non-rigid constraints (i.e.
 /// `constraints[rigid_constraint_count..]`) are relaxed and the
 /// least-penetrating value is returned. If the rigid constraints cannot be
-/// satisfied, returns None.
+/// satisfied, returns the best value prior to that determination.
 pub fn solve_linear_program(
   constraints: &[Line],
   rigid_constraint_count: usize,
   radius: f32,
   preferred_value: Vec2,
-) -> Option<Vec2> {
+) -> Result<Vec2, Vec2> {
   match solve_linear_program_2d(
     constraints,
     radius,
     &OptimalValue::Point(preferred_value),
   ) {
-    LinearProgram2DResult::Feasible(optimal_value) => Some(optimal_value),
-    LinearProgram2DResult::Infeasible { index_of_failed_line, .. }
-      if index_of_failed_line < rigid_constraint_count =>
-    {
-      None
-    }
+    LinearProgram2DResult::Feasible(optimal_value) => Ok(optimal_value),
     LinearProgram2DResult::Infeasible {
       index_of_failed_line,
       partial_value,
-    } => Some(solve_linear_program_3d(
+    } if index_of_failed_line < rigid_constraint_count => Err(partial_value),
+    LinearProgram2DResult::Infeasible {
+      index_of_failed_line,
+      partial_value,
+    } => Ok(solve_linear_program_3d(
       constraints,
       rigid_constraint_count,
       radius,
