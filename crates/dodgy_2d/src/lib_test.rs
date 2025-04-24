@@ -272,4 +272,50 @@ mod compute_avoiding_velocity_tests {
     // one another.
     assert_ne!(avoiding_velocity, Vec2::ZERO);
   }
+
+  #[test]
+  fn does_not_panic_for_parallel_constraints() {
+    // This is a situation where, due to floating point errors, the obstacle
+    // lines are parallel, but it is not detected. Ideally we would solve this,
+    // but it might just be impractical to solve. So we should just return some
+    // arbitrary velocity and hope it resolves itself.
+    let obstacles = [
+      Cow::Owned(Obstacle::Open {
+        vertices: vec![
+          Vec2::new(2.000002, 13.599997),
+          Vec2::new(2.000002, 15.279997),
+        ],
+      }),
+      Cow::Owned(Obstacle::Open {
+        vertices: vec![
+          Vec2::new(0.80000305, 13.599998),
+          Vec2::new(2.000002, 13.599998),
+        ],
+      }),
+    ];
+
+    let agent = Agent {
+      position: Vec2::new(2.0607681, 13.4058075),
+      velocity: Vec2::ZERO,
+      radius: 0.5,
+      avoidance_responsibility: 1.0,
+    };
+
+    let avoiding_velocity = agent.compute_avoiding_velocity(
+      &[],
+      &obstacles,
+      Vec2::ONE,
+      1.0,
+      0.01,
+      &AvoidanceOptions {
+        obstacle_margin: 0.0,
+        time_horizon: 1.0,
+        obstacle_time_horizon: 1.0,
+      },
+    );
+
+    // Just make sure we have some velocity, but not zero so we try to move out
+    // of this situation.
+    assert_ne!(avoiding_velocity, Vec2::ZERO);
+  }
 }

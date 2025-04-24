@@ -163,7 +163,7 @@ impl Agent {
     // just the other lines.
     let obstacle_line_count = lines.len() - neighbours.len();
 
-    if let Some(result) = solve_linear_program(
+    if let Ok(result) = solve_linear_program(
       &lines,
       obstacle_line_count,
       max_speed,
@@ -206,13 +206,17 @@ impl Agent {
     // just the other lines.
     let obstacle_line_count = zero_velocity_lines.len() - neighbours.len();
 
-    let result = solve_linear_program(
+    // We're falling back, so no matter what, take whatever solution we get even
+    // if it's infeasible.
+    let result = match solve_linear_program(
       &zero_velocity_lines,
       obstacle_line_count,
       max_speed,
       preferred_velocity,
-    )
-    .expect("The obstacle constraints should be trivially solvable.");
+    ) {
+      Ok(result) => result,
+      Err(result) => result,
+    };
 
     #[cfg(feature = "debug")]
     let result = (
