@@ -24,17 +24,16 @@ mod simulator;
 
 use std::borrow::Cow;
 
-use crate::linear_programming::solve_linear_program;
-
 pub use glam::Vec3;
 pub use simulator::{AgentParameters, Simulator, SimulatorMargin};
 
-// Re-export Plane so we can use it to provide debug data.
+// Re-export Plane so we can use it to provide debug data, and the solver so the
+// planes can be combined with additional constraints by the caller.
 #[cfg(feature = "debug")]
-pub use crate::linear_programming::Plane;
-// Otherwise, just import it privately.
+pub use crate::linear_programming::{solve_linear_program, Plane};
+// Otherwise, just import them privately.
 #[cfg(not(feature = "debug"))]
-use crate::linear_programming::Plane;
+use crate::linear_programming::{solve_linear_program, Plane};
 
 /// A single agent in the simulation.
 #[derive(Clone, PartialEq, Debug)]
